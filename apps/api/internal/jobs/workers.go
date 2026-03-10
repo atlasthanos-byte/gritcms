@@ -25,6 +25,7 @@ type WorkerDeps struct {
 	Storage *storage.Storage
 	Cache   *cache.Cache
 	Jobs    *Client
+	AppURL  string // Base API URL for generating links (e.g. unsubscribe URLs)
 }
 
 // StartWorker starts the asynq worker server in a goroutine.
@@ -266,6 +267,18 @@ func handleCampaignProcess(deps WorkerDeps) func(ctx context.Context, task *asyn
 		var contacts []models.Contact
 		deps.DB.Where("id IN ?", ids).Find(&contacts)
 
+		// Build contact → unsubscribe token map from subscriptions
+		contactUnsubToken := map[uint]string{}
+		if len(listIDs) > 0 {
+			var allSubs []models.EmailSubscription
+			deps.DB.Where("email_list_id IN ? AND status = ?", listIDs, models.SubStatusActive).Find(&allSubs)
+			for _, sub := range allSubs {
+				if sub.ConfirmToken != "" {
+					contactUnsubToken[sub.ContactID] = sub.ConfirmToken
+				}
+			}
+		}
+
 		// Send to each contact
 		sentCount := 0
 		failedCount := 0
@@ -273,6 +286,15 @@ func handleCampaignProcess(deps WorkerDeps) func(ctx context.Context, task *asyn
 			if contact.Email == "" {
 				continue
 			}
+
+			// Build per-recipient HTML with unsubscribe URL
+			recipientHTML := htmlContent
+			if token, ok := contactUnsubToken[contact.ID]; ok && deps.AppURL != "" {
+				unsubURL := strings.TrimRight(deps.AppURL, "/") + "/api/email/unsubscribe/" + token
+				recipientHTML = strings.ReplaceAll(recipientHTML, "{{unsubscribe_url}}", unsubURL)
+			}
+			// Remove any remaining unsubscribe placeholders for non-list recipients
+			recipientHTML = strings.ReplaceAll(recipientHTML, "{{unsubscribe_url}}", "#")
 
 			// Create EmailSend record
 			now := time.Now()
@@ -292,7 +314,7 @@ func handleCampaignProcess(deps WorkerDeps) func(ctx context.Context, task *asyn
 				ReplyTo:  campaign.ReplyTo,
 				To:       contact.Email,
 				Subject:  subject,
-				HTMLBody: htmlContent,
+				HTMLBody: recipientHTML,
 			})
 
 			if err != nil {

@@ -54,8 +54,13 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 	// Max memory for multipart form parsing (excess goes to temp files)
 	r.MaxMultipartMemory = 50 << 20
 
+	// Buffer request bodies for routes that handle HTML content BEFORE WAF inspects them.
+	// The WAF ExcludeRoutes uses exact-match, so wildcards don't work for /campaigns/:id etc.
+	htmlContentPrefixes := []string{"/api/email/campaigns", "/api/email/templates", "/api/website/pages", "/api/website/posts"}
+	r.Use(middleware.WAFBypassBuffer(htmlContentPrefixes))
+
 	// Mount Sentinel security suite (WAF, rate limiting, auth shield, anomaly detection)
-	excludedRoutes := []string{"/pulse/*", "/studio/*", "/sentinel/*", "/docs/*", "/api/health", "/api/email/campaigns/*", "/api/email/templates/*", "/api/website/pages/*", "/api/website/posts/*"}
+	excludedRoutes := []string{"/pulse/*", "/studio/*", "/sentinel/*", "/docs/*", "/api/health"}
 	if cfg.SentinelEnabled {
 		sentinel.Mount(r, db, sentinel.Config{
 			Dashboard: sentinel.DashboardConfig{
@@ -237,6 +242,7 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 	r.POST("/api/email/subscribe", emailHandler.Subscribe)
 	r.GET("/api/email/confirm/:token", emailHandler.ConfirmSubscription)
 	r.POST("/api/email/unsubscribe", emailHandler.Unsubscribe)
+	r.GET("/api/email/unsubscribe/:token", emailHandler.UnsubscribeByToken)
 	r.GET("/api/email/track/open/:id", emailHandler.TrackOpen)
 	r.GET("/api/email/track/click/:id", emailHandler.TrackClick)
 
@@ -351,6 +357,7 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 	admin := r.Group("/api")
 	admin.Use(middleware.Auth(db, authService))
 	admin.Use(middleware.RequireRole("ADMIN"))
+	admin.Use(middleware.WAFBypassRestore())
 	{
 		admin.GET("/users", userHandler.List)
 		admin.POST("/users", userHandler.Create)

@@ -356,6 +356,52 @@ func (h *EmailHandler) Unsubscribe(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Unsubscribed successfully"})
 }
 
+// UnsubscribeByToken handles one-click unsubscribe via GET link in emails.
+// GET /api/email/unsubscribe/:token
+func (h *EmailHandler) UnsubscribeByToken(c *gin.Context) {
+	token := c.Param("token")
+	if token == "" {
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		c.String(http.StatusBadRequest, unsubscribePage("Invalid Link", "This unsubscribe link is invalid.", false))
+		return
+	}
+
+	var sub models.EmailSubscription
+	if err := h.DB.Where("confirm_token = ?", token).First(&sub).Error; err != nil {
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		c.String(http.StatusNotFound, unsubscribePage("Not Found", "This unsubscribe link is invalid or has already been used.", false))
+		return
+	}
+
+	if sub.Status == models.SubStatusUnsubscribed {
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		c.String(http.StatusOK, unsubscribePage("Already Unsubscribed", "You have already been unsubscribed from this list.", true))
+		return
+	}
+
+	now := time.Now()
+	sub.Status = models.SubStatusUnsubscribed
+	sub.UnsubscribedAt = &now
+	h.DB.Save(&sub)
+
+	events.Emit(events.EmailUnsubscribed, sub)
+
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.String(http.StatusOK, unsubscribePage("Unsubscribed", "You have been successfully unsubscribed. You will no longer receive emails from this list.", true))
+}
+
+func unsubscribePage(title, message string, success bool) string {
+	color := "#ef4444"
+	icon := "&#10060;"
+	if success {
+		color = "#22c55e"
+		icon = "&#10004;"
+	}
+	return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>` + title + `</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0a;color:#e5e5e5;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}.card{background:#171717;border:1px solid #262626;border-radius:16px;padding:48px;max-width:420px;width:100%;text-align:center}.icon{font-size:48px;margin-bottom:16px}.title{font-size:24px;font-weight:700;margin-bottom:12px;color:#fafafa}.msg{font-size:15px;color:#a3a3a3;line-height:1.6}</style></head>
+<body><div class="card"><div class="icon">` + icon + `</div><h1 class="title" style="color:` + color + `">` + title + `</h1><p class="msg">` + message + `</p></div></body></html>`
+}
+
 // AdminAddSubscriber allows admins to manually add a subscriber.
 // Accepts either contact_id (existing contact) or email (creates contact if needed).
 func (h *EmailHandler) AdminAddSubscriber(c *gin.Context) {
@@ -1451,6 +1497,9 @@ func (h *EmailHandler) SendTestEmail(c *gin.Context) {
 		}
 	}
 	// If from is empty, SendCampaignEmail falls back to default mailer from address
+
+	// Replace unsubscribe placeholder with a no-op link for test emails
+	htmlContent = strings.ReplaceAll(htmlContent, "{{unsubscribe_url}}", "#")
 
 	_, err := h.Mailer.SendCampaignEmail(c.Request.Context(), mail.CampaignEmailOptions{
 		From:     from,

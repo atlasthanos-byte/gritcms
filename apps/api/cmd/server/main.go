@@ -141,6 +141,7 @@ func main() {
 			Storage: storageService,
 			Cache:   cacheService,
 			Jobs:    jobClient,
+			AppURL:  cfg.AppURL,
 		})
 		if err != nil {
 			log.Printf("Warning: Background worker failed to start: %v", err)
