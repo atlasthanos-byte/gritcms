@@ -8,7 +8,7 @@ import Youtube from "@tiptap/extension-youtube";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import {
   Bold,
   Italic,
@@ -31,6 +31,7 @@ import {
   MinusLine,
   Undo,
   Redo,
+  X,
 } from "@/lib/icons";
 
 interface EmailEditorProps {
@@ -39,8 +40,11 @@ interface EmailEditorProps {
   placeholder?: string;
 }
 
+type ModalType = null | "link" | "image" | "youtube" | "cta";
+
 export function EmailEditor({ value, onChange, placeholder }: EmailEditorProps) {
-  const [showCtaModal, setShowCtaModal] = useState(false);
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [linkInitialUrl, setLinkInitialUrl] = useState("");
 
   const editor = useEditor({
     extensions: [
@@ -92,39 +96,50 @@ export function EmailEditor({ value, onChange, placeholder }: EmailEditorProps) 
     }
   }, [value, editor]);
 
-  const setLink = useCallback(() => {
+  const openLinkModal = useCallback(() => {
     if (!editor) return;
-    const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("URL", previousUrl);
-    if (url === null) return;
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    const previousUrl = editor.getAttributes("link").href || "";
+    setLinkInitialUrl(previousUrl);
+    setActiveModal("link");
   }, [editor]);
 
-  const addImage = useCallback(() => {
-    if (!editor) return;
-    const url = window.prompt("Image URL");
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
-    }
-  }, [editor]);
+  const handleLinkSubmit = useCallback(
+    (url: string) => {
+      if (!editor) return;
+      if (url === "") {
+        editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      } else {
+        editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+      }
+      setActiveModal(null);
+    },
+    [editor]
+  );
 
-  const addYoutube = useCallback(() => {
-    if (!editor) return;
-    const url = window.prompt("YouTube video URL");
-    if (url) {
+  const handleImageSubmit = useCallback(
+    (url: string, alt: string) => {
+      if (!editor || !url) return;
+      editor.chain().focus().setImage({ src: url, alt }).run();
+      setActiveModal(null);
+    },
+    [editor]
+  );
+
+  const handleYoutubeSubmit = useCallback(
+    (url: string) => {
+      if (!editor || !url) return;
       editor.chain().focus().setYoutubeVideo({ src: url }).run();
-    }
-  }, [editor]);
+      setActiveModal(null);
+    },
+    [editor]
+  );
 
-  const insertCta = useCallback(
+  const handleCtaSubmit = useCallback(
     (text: string, url: string) => {
       if (!editor || !text || !url) return;
       const ctaHtml = `<p style="text-align: center; margin: 24px 0;"><a href="${url}" style="display: inline-block; background-color: #6c5ce7; color: #ffffff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${text}</a></p>`;
       editor.chain().focus().insertContent(ctaHtml).run();
+      setActiveModal(null);
     },
     [editor]
   );
@@ -257,16 +272,16 @@ export function EmailEditor({ value, onChange, placeholder }: EmailEditorProps) 
           <Separator />
 
           {/* Media & embeds */}
-          <ToolbarButton onClick={setLink} active={editor.isActive("link")} title="Insert Link">
+          <ToolbarButton onClick={openLinkModal} active={editor.isActive("link")} title="Insert Link">
             <LinkIcon className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton onClick={addImage} title="Insert Image">
+          <ToolbarButton onClick={() => setActiveModal("image")} title="Insert Image">
             <ImageIcon className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton onClick={addYoutube} title="Embed YouTube">
+          <ToolbarButton onClick={() => setActiveModal("youtube")} title="Embed YouTube">
             <YoutubeIcon className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton onClick={() => setShowCtaModal(true)} title="Insert CTA Button">
+          <ToolbarButton onClick={() => setActiveModal("cta")} title="Insert CTA Button">
             <MousePointerClick className="h-4 w-4" />
           </ToolbarButton>
 
@@ -306,7 +321,7 @@ export function EmailEditor({ value, onChange, placeholder }: EmailEditorProps) 
                 {editor.getAttributes("link").href}
               </a>
               <button
-                onClick={setLink}
+                onClick={openLinkModal}
                 className="text-xs text-text-muted hover:text-text-primary px-1"
               >
                 Edit
@@ -324,19 +339,37 @@ export function EmailEditor({ value, onChange, placeholder }: EmailEditorProps) 
         <EditorContent editor={editor} />
       </div>
 
-      {/* CTA Modal */}
-      {showCtaModal && (
+      {/* Modals */}
+      {activeModal === "link" && (
+        <LinkModal
+          initialUrl={linkInitialUrl}
+          onSubmit={handleLinkSubmit}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+      {activeModal === "image" && (
+        <ImageModal
+          onSubmit={handleImageSubmit}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+      {activeModal === "youtube" && (
+        <YoutubeModal
+          onSubmit={handleYoutubeSubmit}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+      {activeModal === "cta" && (
         <CtaModal
-          onInsert={(text, url) => {
-            insertCta(text, url);
-            setShowCtaModal(false);
-          }}
-          onClose={() => setShowCtaModal(false)}
+          onSubmit={handleCtaSubmit}
+          onClose={() => setActiveModal(null)}
         />
       )}
     </div>
   );
 }
+
+// ─── Shared Components ───────────────────────────────────────────────
 
 function Separator() {
   return <div className="mx-1 h-5 w-px bg-border" />;
@@ -368,73 +401,288 @@ function ToolbarButton({ onClick, active, disabled, title, children }: ToolbarBu
   );
 }
 
-function CtaModal({
-  onInsert,
+function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-xl border border-border bg-bg-elevated p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ModalHeader({ title, icon, onClose }: { title: string; icon: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
+          {icon}
+        </div>
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+      </div>
+      <button onClick={onClose} className="rounded-lg p-1.5 text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function ModalInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  autoFocus,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-text-secondary mb-1.5">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2.5 text-sm text-foreground placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30 transition-colors"
+      />
+    </div>
+  );
+}
+
+function ModalActions({
+  onClose,
+  onSubmit,
+  submitLabel,
+  disabled,
+}: {
+  onClose: () => void;
+  onSubmit: () => void;
+  submitLabel: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex justify-end gap-2 mt-5">
+      <button
+        onClick={onClose}
+        className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover transition-colors"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={onSubmit}
+        disabled={disabled}
+        className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50 transition-colors"
+      >
+        {submitLabel}
+      </button>
+    </div>
+  );
+}
+
+// ─── Link Modal ──────────────────────────────────────────────────────
+
+function LinkModal({
+  initialUrl,
+  onSubmit,
   onClose,
 }: {
-  onInsert: (text: string, url: string) => void;
+  initialUrl: string;
+  onSubmit: (url: string) => void;
+  onClose: () => void;
+}) {
+  const [url, setUrl] = useState(initialUrl || "https://");
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <ModalHeader title="Insert Link" icon={<LinkIcon className="h-4 w-4" />} onClose={onClose} />
+      <div className="space-y-4">
+        <ModalInput
+          label="URL"
+          value={url}
+          onChange={setUrl}
+          placeholder="https://example.com"
+          type="url"
+          autoFocus
+        />
+        {url && url !== "https://" && (
+          <div className="rounded-lg border border-border bg-bg-secondary px-3 py-2 text-xs text-accent underline truncate">
+            {url}
+          </div>
+        )}
+      </div>
+      <ModalActions
+        onClose={onClose}
+        onSubmit={() => onSubmit(url)}
+        submitLabel={initialUrl ? "Update Link" : "Insert Link"}
+        disabled={!url || url === "https://"}
+      />
+    </ModalOverlay>
+  );
+}
+
+// ─── Image Modal ─────────────────────────────────────────────────────
+
+function ImageModal({
+  onSubmit,
+  onClose,
+}: {
+  onSubmit: (url: string, alt: string) => void;
+  onClose: () => void;
+}) {
+  const [url, setUrl] = useState("");
+  const [alt, setAlt] = useState("");
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <ModalHeader title="Insert Image" icon={<ImageIcon className="h-4 w-4" />} onClose={onClose} />
+      <div className="space-y-4">
+        <ModalInput
+          label="Image URL"
+          value={url}
+          onChange={setUrl}
+          placeholder="https://example.com/image.jpg"
+          type="url"
+          autoFocus
+        />
+        <ModalInput
+          label="Alt Text (optional)"
+          value={alt}
+          onChange={setAlt}
+          placeholder="Describe the image"
+        />
+        {url && (
+          <div className="rounded-lg border border-border bg-bg-secondary p-3 text-center">
+            <img
+              src={url}
+              alt={alt || "Preview"}
+              className="max-h-32 mx-auto rounded-lg object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </div>
+        )}
+      </div>
+      <ModalActions
+        onClose={onClose}
+        onSubmit={() => onSubmit(url, alt)}
+        submitLabel="Insert Image"
+        disabled={!url}
+      />
+    </ModalOverlay>
+  );
+}
+
+// ─── YouTube Modal ───────────────────────────────────────────────────
+
+function YoutubeModal({
+  onSubmit,
+  onClose,
+}: {
+  onSubmit: (url: string) => void;
+  onClose: () => void;
+}) {
+  const [url, setUrl] = useState("");
+
+  const isValidYoutube =
+    url.includes("youtube.com/watch") ||
+    url.includes("youtu.be/") ||
+    url.includes("youtube.com/embed");
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <ModalHeader title="Embed YouTube Video" icon={<YoutubeIcon className="h-4 w-4" />} onClose={onClose} />
+      <div className="space-y-4">
+        <ModalInput
+          label="YouTube URL"
+          value={url}
+          onChange={setUrl}
+          placeholder="https://www.youtube.com/watch?v=..."
+          type="url"
+          autoFocus
+        />
+        {url && !isValidYoutube && (
+          <p className="text-xs text-red-400">Please enter a valid YouTube URL</p>
+        )}
+        {isValidYoutube && (
+          <div className="rounded-lg border border-border bg-bg-secondary p-3">
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
+              <YoutubeIcon className="h-4 w-4 text-red-500" />
+              <span className="truncate">{url}</span>
+            </div>
+          </div>
+        )}
+      </div>
+      <ModalActions
+        onClose={onClose}
+        onSubmit={() => onSubmit(url)}
+        submitLabel="Embed Video"
+        disabled={!isValidYoutube}
+      />
+    </ModalOverlay>
+  );
+}
+
+// ─── CTA Button Modal ────────────────────────────────────────────────
+
+function CtaModal({
+  onSubmit,
+  onClose,
+}: {
+  onSubmit: (text: string, url: string) => void;
   onClose: () => void;
 }) {
   const [text, setText] = useState("Click Here");
   const [url, setUrl] = useState("https://");
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm rounded-xl border border-border bg-bg-elevated p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="text-lg font-semibold text-foreground">Insert CTA Button</h3>
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">
-            Button Text
-          </label>
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">
-            Button URL
-          </label>
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none"
-          />
-        </div>
+    <ModalOverlay onClose={onClose}>
+      <ModalHeader title="Insert CTA Button" icon={<MousePointerClick className="h-4 w-4" />} onClose={onClose} />
+      <div className="space-y-4">
+        <ModalInput
+          label="Button Text"
+          value={text}
+          onChange={setText}
+          placeholder="e.g. Get Started"
+          autoFocus
+        />
+        <ModalInput
+          label="Button URL"
+          value={url}
+          onChange={setUrl}
+          placeholder="https://example.com"
+          type="url"
+        />
         {/* Preview */}
-        <div className="rounded-lg border border-border bg-bg-secondary p-4 text-center">
-          <span
-            className="inline-block rounded-lg px-8 py-3 text-sm font-semibold text-white"
-            style={{ backgroundColor: "#6c5ce7" }}
-          >
-            {text || "Button"}
-          </span>
-        </div>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-border px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onInsert(text, url)}
-            disabled={!text || !url || url === "https://"}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50"
-          >
-            Insert
-          </button>
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1.5">Preview</label>
+          <div className="rounded-lg border border-border bg-bg-secondary p-5 text-center">
+            <span
+              className="inline-block rounded-lg px-8 py-3 text-sm font-semibold text-white transition-transform hover:scale-105"
+              style={{ backgroundColor: "#6c5ce7" }}
+            >
+              {text || "Button"}
+            </span>
+          </div>
         </div>
       </div>
-    </div>
+      <ModalActions
+        onClose={onClose}
+        onSubmit={() => onSubmit(text, url)}
+        submitLabel="Insert Button"
+        disabled={!text || !url || url === "https://"}
+      />
+    </ModalOverlay>
   );
 }
