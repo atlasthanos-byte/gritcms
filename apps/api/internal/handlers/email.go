@@ -189,9 +189,33 @@ func (h *EmailHandler) Subscribe(c *gin.Context) {
 		h.DB.Model(&contact).Updates(updates)
 	}
 
-	// Check if already subscribed
+	// Check if already subscribed (include soft-deleted to handle unique index)
 	var existing models.EmailSubscription
-	if err := h.DB.Where("contact_id = ? AND email_list_id = ?", contact.ID, body.ListID).First(&existing).Error; err == nil {
+	if err := h.DB.Unscoped().Where("contact_id = ? AND email_list_id = ?", contact.ID, body.ListID).First(&existing).Error; err == nil {
+		wasSoftDeleted := existing.DeletedAt.Valid
+
+		if wasSoftDeleted {
+			// Restore soft-deleted record and re-subscribe
+			existing.DeletedAt = gorm.DeletedAt{}
+			now := time.Now()
+			existing.SubscribedAt = &now
+			existing.UnsubscribedAt = nil
+			if list.DoubleOptin {
+				existing.Status = models.SubStatusPending
+				existing.ConfirmToken = generateToken()
+				h.DB.Unscoped().Save(&existing)
+				h.sendConfirmEmail(contact, list, existing.ConfirmToken)
+				c.JSON(http.StatusOK, gin.H{"message": "Please check your email to confirm your subscription", "confirm_required": true})
+			} else {
+				existing.Status = models.SubStatusActive
+				existing.ConfirmToken = ""
+				h.DB.Unscoped().Save(&existing)
+				events.Emit(events.EmailSubscribed, existing)
+				c.JSON(http.StatusOK, gin.H{"message": "Subscribed successfully"})
+			}
+			return
+		}
+
 		if existing.Status == models.SubStatusActive {
 			c.JSON(http.StatusOK, gin.H{"message": "Already subscribed"})
 			return
@@ -206,21 +230,20 @@ func (h *EmailHandler) Subscribe(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "Please check your email to confirm your subscription", "confirm_required": true})
 			return
 		}
-		// Re-subscribe — respect double opt-in
+		// Re-subscribe (e.g. from unsubscribed state)
 		now := time.Now()
+		existing.SubscribedAt = &now
+		existing.UnsubscribedAt = nil
 		if list.DoubleOptin {
 			existing.Status = models.SubStatusPending
 			if existing.ConfirmToken == "" {
 				existing.ConfirmToken = generateToken()
 			}
-			existing.UnsubscribedAt = nil
 			h.DB.Save(&existing)
 			h.sendConfirmEmail(contact, list, existing.ConfirmToken)
 			c.JSON(http.StatusOK, gin.H{"message": "Please check your email to confirm your subscription", "confirm_required": true})
 		} else {
 			existing.Status = models.SubStatusActive
-			existing.SubscribedAt = &now
-			existing.UnsubscribedAt = nil
 			h.DB.Save(&existing)
 			events.Emit(events.EmailSubscribed, existing)
 			c.JSON(http.StatusOK, gin.H{"message": "Subscribed successfully"})
@@ -245,7 +268,10 @@ func (h *EmailHandler) Subscribe(c *gin.Context) {
 		sub.Status = models.SubStatusActive
 	}
 
-	h.DB.Create(&sub)
+	if err := h.DB.Create(&sub).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to subscribe"})
+		return
+	}
 
 	if sub.Status == models.SubStatusActive {
 		events.Emit(events.EmailSubscribed, sub)
@@ -387,29 +413,51 @@ func (h *EmailHandler) AdminAddSubscriber(c *gin.Context) {
 	var contact models.Contact
 	h.DB.First(&contact, contactID)
 
-	// Check for existing subscription
+	// Check for existing subscription (include soft-deleted to handle unique index)
 	var existing models.EmailSubscription
-	if err := h.DB.Where("contact_id = ? AND email_list_id = ?", contactID, listID).First(&existing).Error; err == nil {
+	if err := h.DB.Unscoped().Where("contact_id = ? AND email_list_id = ?", contactID, listID).First(&existing).Error; err == nil {
+		wasSoftDeleted := existing.DeletedAt.Valid
+
+		if wasSoftDeleted {
+			// Restore soft-deleted record and re-subscribe
+			existing.DeletedAt = gorm.DeletedAt{}
+			now := time.Now()
+			existing.SubscribedAt = &now
+			existing.UnsubscribedAt = nil
+			if list.DoubleOptin {
+				existing.Status = models.SubStatusPending
+				existing.ConfirmToken = generateToken()
+				h.DB.Unscoped().Save(&existing)
+				h.sendConfirmEmail(contact, list, existing.ConfirmToken)
+				c.JSON(http.StatusOK, gin.H{"data": existing, "message": "Confirmation email sent"})
+			} else {
+				existing.Status = models.SubStatusActive
+				existing.ConfirmToken = ""
+				h.DB.Unscoped().Save(&existing)
+				c.JSON(http.StatusOK, gin.H{"data": existing})
+			}
+			return
+		}
+
 		if existing.Status == models.SubStatusActive {
 			c.JSON(http.StatusOK, gin.H{"data": existing, "message": "Already subscribed"})
 			return
 		}
 		// Reactivate — respect double opt-in
 		now := time.Now()
+		existing.SubscribedAt = &now
+		existing.UnsubscribedAt = nil
 		if list.DoubleOptin {
 			existing.Status = models.SubStatusPending
 			if existing.ConfirmToken == "" {
 				existing.ConfirmToken = generateToken()
 			}
-			existing.UnsubscribedAt = nil
 			h.DB.Save(&existing)
 			h.sendConfirmEmail(contact, list, existing.ConfirmToken)
 			c.JSON(http.StatusOK, gin.H{"data": existing, "message": "Confirmation email sent"})
 		} else {
 			existing.Status = models.SubStatusActive
-			existing.SubscribedAt = &now
-			existing.UnsubscribedAt = nil
-			h.DB.Save(&existing)
+			h.DB.Unscoped().Save(&existing)
 			c.JSON(http.StatusOK, gin.H{"data": existing})
 		}
 		return
