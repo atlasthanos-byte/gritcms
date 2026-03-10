@@ -177,20 +177,24 @@ func handleCampaignProcess(deps WorkerDeps) func(ctx context.Context, task *asyn
 			"sent_at": time.Now(),
 		})
 
-		// Resolve HTML content: template takes priority, then inline content
+		// Resolve HTML content
 		htmlContent := campaign.HTMLContent
+		subject := campaign.Subject
+		if subject == "" && campaign.Template != nil {
+			subject = campaign.Template.Subject
+		}
+
+		// If a template is selected, use it as a layout wrapper and substitute placeholders
 		if campaign.Template != nil && campaign.Template.HTMLContent != "" {
-			htmlContent = campaign.Template.HTMLContent
+			tmpl := campaign.Template.HTMLContent
+			tmpl = strings.ReplaceAll(tmpl, "{{subject}}", subject)
+			tmpl = strings.ReplaceAll(tmpl, "{{content}}", htmlContent)
+			htmlContent = tmpl
 		}
 		if htmlContent == "" {
 			deps.DB.Model(&campaign).Update("status", models.CampaignStatusSent)
 			log.Printf("Campaign %d has no HTML content, marked as sent", payload.CampaignID)
 			return nil
-		}
-
-		subject := campaign.Subject
-		if subject == "" && campaign.Template != nil {
-			subject = campaign.Template.Subject
 		}
 
 		// Build "from" string

@@ -1388,19 +1388,23 @@ func (h *EmailHandler) SendTestEmail(c *gin.Context) {
 		return
 	}
 
-	// Resolve HTML content (template > inline)
+	// Resolve HTML content
 	htmlContent := campaign.HTMLContent
+	subject := campaign.Subject
+	if subject == "" && campaign.Template != nil {
+		subject = campaign.Template.Subject
+	}
+
+	// If a template is selected, use it as a layout wrapper and substitute placeholders
 	if campaign.Template != nil && campaign.Template.HTMLContent != "" {
-		htmlContent = campaign.Template.HTMLContent
+		tmpl := campaign.Template.HTMLContent
+		tmpl = strings.ReplaceAll(tmpl, "{{subject}}", subject)
+		tmpl = strings.ReplaceAll(tmpl, "{{content}}", htmlContent)
+		htmlContent = tmpl
 	}
 	if htmlContent == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Campaign has no content"})
 		return
-	}
-
-	subject := campaign.Subject
-	if subject == "" && campaign.Template != nil {
-		subject = campaign.Template.Subject
 	}
 
 	from := ""
