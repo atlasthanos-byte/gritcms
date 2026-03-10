@@ -650,11 +650,46 @@ func (h *EmailHandler) UpdateCampaign(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot edit a sent or sending campaign"})
 		return
 	}
-	if err := c.ShouldBindJSON(&campaign); err != nil {
+	// Only update allowed fields from request body
+	var body struct {
+		Name       string          `json:"name"`
+		Subject    string          `json:"subject"`
+		FromName   string          `json:"from_name"`
+		FromEmail  string          `json:"from_email"`
+		ReplyTo    string          `json:"reply_to"`
+		HTMLContent string         `json:"html_content"`
+		TextContent string         `json:"text_content"`
+		TemplateID *uint           `json:"template_id"`
+		ListIDs    datatypes.JSON  `json:"list_ids"`
+		SegmentIDs datatypes.JSON  `json:"segment_ids"`
+		TagIDs     datatypes.JSON  `json:"tag_ids"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	h.DB.Save(&campaign)
+
+	updates := map[string]interface{}{
+		"name":         body.Name,
+		"subject":      body.Subject,
+		"from_name":    body.FromName,
+		"from_email":   body.FromEmail,
+		"reply_to":     body.ReplyTo,
+		"html_content": body.HTMLContent,
+		"text_content": body.TextContent,
+		"template_id":  body.TemplateID,
+		"list_ids":     body.ListIDs,
+		"segment_ids":  body.SegmentIDs,
+		"tag_ids":      body.TagIDs,
+	}
+
+	if err := h.DB.Model(&campaign).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save campaign: " + err.Error()})
+		return
+	}
+
+	// Reload to return fresh data
+	h.DB.Preload("Template").First(&campaign, id)
 	c.JSON(http.StatusOK, gin.H{"data": campaign})
 }
 
