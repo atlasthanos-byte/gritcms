@@ -43,7 +43,7 @@ export function useGuideAccess(slug: string, emailB64: string) {
     queryKey: ["guide-access", slug, emailB64],
     queryFn: async () => {
       const { data } = await api.get(`/api/p/guides/${slug}/access?e=${encodeURIComponent(emailB64)}`);
-      return data as { has_access: boolean; list_name: string; pdf_url?: string };
+      return data as { has_access: boolean; list_name: string; list_id?: number; pdf_url?: string };
     },
     enabled: !!slug && !!emailB64,
   });

@@ -157,19 +157,30 @@ export default function GuideDetailPage() {
             <span className="font-medium text-foreground">{access?.list_name || "our newsletter"}</span>{" "}
             subscribers.
           </p>
-          <p className="text-sm text-text-muted">
-            Subscribe to the list to get access to this and other premium guides.
+          <p className="text-sm text-text-muted mb-6">
+            Subscribe to get access to this and other premium guides.
           </p>
-          <button
-            onClick={() => {
-              setSubmitted(false);
-              setEmailB64("");
-              setEmailInput("");
-            }}
-            className="mt-4 text-sm text-accent hover:underline"
-          >
-            Try a different email
-          </button>
+          <div className="flex flex-col gap-3">
+            {access?.list_id && (
+              <Link
+                href={`/subscribe?list=${access.list_id}&source=guide`}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
+              >
+                <Mail className="h-4 w-4" />
+                Subscribe to {access.list_name || "Newsletter"}
+              </Link>
+            )}
+            <button
+              onClick={() => {
+                setSubmitted(false);
+                setEmailB64("");
+                setEmailInput("");
+              }}
+              className="text-sm text-text-secondary hover:text-accent transition-colors"
+            >
+              Try a different email
+            </button>
+          </div>
         </div>
       )}
     </div>

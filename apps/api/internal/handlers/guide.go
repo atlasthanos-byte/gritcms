@@ -225,6 +225,7 @@ func (h *GuideHandler) CheckGuideAccess(c *gin.Context) {
 	resp := gin.H{
 		"has_access": hasAccess,
 		"list_name":  guide.EmailList.Name,
+		"list_id":    guide.EmailListID,
 	}
 	if hasAccess {
 		resp["pdf_url"] = guide.PdfUrl
