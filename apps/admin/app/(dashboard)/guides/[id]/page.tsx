@@ -22,6 +22,8 @@ import {
 } from "@/lib/icons";
 import { useConfirm } from "@/hooks/use-confirm";
 
+const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL || "";
+
 export default function GuideEditPage() {
   const params = useParams();
   const router = useRouter();
@@ -371,12 +373,12 @@ export default function GuideEditPage() {
                 <div className="flex items-center gap-2">
                   <input
                     readOnly
-                    value={`${typeof window !== "undefined" ? window.location.origin.replace("admin.", "") : ""}/guides/${guide.slug}`}
+                    value={`${WEB_URL}/guides/${guide.slug}`}
                     className="flex-1 rounded-lg border border-border bg-bg-primary px-3 py-2 text-xs text-text-secondary truncate"
                   />
                   <button
                     onClick={() => {
-                      const url = `${window.location.origin.replace("admin.", "")}/guides/${guide.slug}`;
+                      const url = `${WEB_URL}/guides/${guide.slug}`;
                       navigator.clipboard.writeText(url);
                       setCopied("base");
                       setTimeout(() => setCopied(""), 2000);
@@ -400,7 +402,7 @@ export default function GuideEditPage() {
                     <button
                       key={social.ref}
                       onClick={() => {
-                        const url = `${window.location.origin.replace("admin.", "")}/guides/${guide.slug}?ref=${social.ref}`;
+                        const url = `${WEB_URL}/guides/${guide.slug}?ref=${social.ref}`;
                         navigator.clipboard.writeText(url);
                         setCopied(social.ref);
                         setTimeout(() => setCopied(""), 2000);
