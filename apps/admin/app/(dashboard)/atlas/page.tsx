@@ -11,7 +11,7 @@ import {
   TrendingUp,
   Briefcase,
   BookOpen,
-  Bot,
+  Zap,
   FileText,
   Package,
   BarChart3,
@@ -20,9 +20,9 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  Flame,
+  Award,
   Eye,
-  ThumbsUp,
+  Heart,
   Clock,
 } from "@/lib/icons";
 import {
@@ -80,7 +80,7 @@ const MAIN_TABS: { key: MainTab; label: string; icon: React.ElementType }[] = [
   { key: "contacts", label: "Contacts", icon: Users },
   { key: "projects", label: "Projects", icon: Briefcase },
   { key: "courses", label: "Courses", icon: BookOpen },
-  { key: "agents", label: "Agents", icon: Bot },
+  { key: "agents", label: "Agents", icon: Zap },
   { key: "content", label: "Content", icon: FileText },
   { key: "products", label: "Products", icon: Package },
   { key: "revenue", label: "Revenue", icon: DollarSign },
@@ -1531,7 +1531,7 @@ export default function AtlasPage() {
             </div>
             <div className="rounded-xl border border-border bg-bg-secondary p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Flame className="h-5 w-5 text-orange-400" />
+                <Award className="h-5 w-5 text-orange-400" />
                 <h3 className="text-sm font-semibold text-foreground">Streak</h3>
               </div>
               <p className="text-4xl font-bold text-foreground">{streakData?.streak ?? 0}</p>

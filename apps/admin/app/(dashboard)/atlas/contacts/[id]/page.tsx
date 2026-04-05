@@ -9,11 +9,11 @@ import {
   Phone,
   MapPin,
   Building2,
-  Linkedin,
+  Link2,
   MessageSquare,
   Plus,
   Loader2,
-  Edit2,
+  Pencil,
   Clock,
   User,
 } from "@/lib/icons";
@@ -147,7 +147,7 @@ function interactionTypeIcon(type: string) {
     case "linkedin_dm":
       return (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600/10 shrink-0">
-          <Linkedin className="h-4 w-4 text-blue-500" />
+          <Link2 className="h-4 w-4 text-blue-500" />
         </div>
       );
     case "whatsapp":
@@ -159,7 +159,7 @@ function interactionTypeIcon(type: string) {
     case "note":
       return (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10 shrink-0">
-          <Edit2 className="h-4 w-4 text-yellow-400" />
+          <Pencil className="h-4 w-4 text-yellow-400" />
         </div>
       );
     default:
@@ -731,7 +731,7 @@ export default function AtlasContactDetailPage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors"
                 >
-                  <Linkedin className="h-3.5 w-3.5" />
+                  <Link2 className="h-3.5 w-3.5" />
                   LinkedIn
                 </a>
               )}
@@ -764,7 +764,7 @@ export default function AtlasContactDetailPage() {
             onClick={() => setShowEditModal(true)}
             className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-foreground transition-colors"
           >
-            <Edit2 className="h-4 w-4" />
+            <Pencil className="h-4 w-4" />
             Edit
           </button>
         </div>

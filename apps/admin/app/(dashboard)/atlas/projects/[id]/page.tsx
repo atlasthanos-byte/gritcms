@@ -11,10 +11,10 @@ import {
   GitBranch,
   FileText,
   ExternalLink,
-  CheckCircle2,
-  XCircle,
+  Check,
+  X,
   Clock,
-  Edit2,
+  Pencil,
 } from "@/lib/icons";
 import { useAtlasProject, useUpdateAtlasProject } from "@/hooks/use-atlas";
 import type { AtlasProject } from "@repo/shared/types";
@@ -182,7 +182,7 @@ function EditProjectModal({
             onClick={onClose}
             className="rounded-lg p-1.5 text-text-muted hover:bg-bg-hover hover:text-foreground transition-colors"
           >
-            <XCircle className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -479,12 +479,12 @@ function BooleanBadge({
 }) {
   return value ? (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success">
-      <CheckCircle2 className="h-3.5 w-3.5" />
+      <Check className="h-3.5 w-3.5" />
       {trueLabel}
     </span>
   ) : (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-bg-elevated px-2.5 py-0.5 text-xs font-medium text-text-muted">
-      <XCircle className="h-3.5 w-3.5" />
+      <X className="h-3.5 w-3.5" />
       {falseLabel}
     </span>
   );
@@ -598,7 +598,7 @@ export default function AtlasProjectDetailPage() {
                 onClick={() => setShowEdit(true)}
                 className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-foreground transition-colors"
               >
-                <Edit2 className="h-4 w-4" />
+                <Pencil className="h-4 w-4" />
                 Edit
               </button>
             </div>
@@ -712,7 +712,7 @@ export default function AtlasProjectDetailPage() {
               </span>
             </div>
             <div className="flex items-center gap-2 text-text-secondary">
-              <CheckCircle2 className="h-3.5 w-3.5 text-text-muted" />
+              <Check className="h-3.5 w-3.5 text-text-muted" />
               <span className="text-text-muted">Delivered:</span>
               <span className="text-foreground">
                 {formatDate(project.delivered_date)}
