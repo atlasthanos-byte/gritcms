@@ -80,6 +80,9 @@ type Config struct {
 	StripeSecretKey      string
 	StripePublishableKey string
 	StripeWebhookSecret  string
+
+	// ATLAS CRM MCP Server
+	AtlasAPIKey string
 }
 
 // Load reads configuration from environment variables.
@@ -138,6 +141,8 @@ func Load() (*Config, error) {
 		StripeSecretKey:      getEnv("STRIPE_SECRET_KEY", ""),
 		StripePublishableKey: getEnv("STRIPE_PUBLISHABLE_KEY", ""),
 		StripeWebhookSecret:  getEnv("STRIPE_WEBHOOK_SECRET", ""),
+
+		AtlasAPIKey: getEnv("ATLAS_API_KEY", ""),
 	}
 
 	if cfg.DatabaseURL == "" {

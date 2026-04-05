@@ -216,6 +216,9 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 		})
 	})
 
+	// Mount ATLAS CRM MCP server at /mcp (same port as API, no separate service)
+	MountMCP(r, db, cfg.AtlasAPIKey)
+
 	// Cache middleware for public GET routes (5 min TTL)
 	publicCache := middleware.CacheResponse(svc.Cache, 5*time.Minute)
 	shortCache := middleware.CacheResponse(svc.Cache, 1*time.Minute)
