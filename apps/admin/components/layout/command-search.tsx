@@ -30,6 +30,13 @@ const searchItems: SearchItem[] = [
   { label: "Automation", href: "/automation", icon: "Zap", category: "Modules" },
   { label: "Guides", href: "/guides", icon: "BookMarked", category: "Modules" },
   { label: "Analytics", href: "/analytics", icon: "BarChart3", category: "Modules" },
+  // ATLAS CRM
+  { label: "ATLAS CRM", href: "/atlas", icon: "Compass", category: "ATLAS" },
+  { label: "ATLAS Contacts", href: "/atlas?tab=contacts", icon: "Users", category: "ATLAS" },
+  { label: "ATLAS Projects", href: "/atlas?tab=projects", icon: "Briefcase", category: "ATLAS" },
+  { label: "ATLAS Revenue", href: "/atlas?tab=revenue", icon: "DollarSign", category: "ATLAS" },
+  { label: "ATLAS Agents", href: "/atlas?tab=agents", icon: "Bot", category: "ATLAS" },
+  { label: "ATLAS Content", href: "/atlas?tab=content", icon: "Video", category: "ATLAS" },
   // System
   { label: "Media Library", href: "/media", icon: "Image", category: "System" },
   { label: "Settings", href: "/settings", icon: "Settings", category: "System" },

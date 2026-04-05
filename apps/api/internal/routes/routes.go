@@ -106,7 +106,7 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 				cfg.GORMStudioUsername: cfg.GORMStudioPassword,
 			})
 		}
-		studio.Mount(r, db, []interface{}{&models.Tenant{}, &models.User{}, &models.Upload{}, &models.Blog{}, &models.Setting{}, &models.MediaAsset{}, &models.Tag{}, &models.Contact{}, &models.ContactActivity{}, &models.CustomFieldDefinition{}, &models.Page{}, &models.Post{}, &models.PostCategory{}, &models.PostTag{}, &models.Menu{}, &models.MenuItem{}, &models.EmailList{}, &models.EmailSubscription{}, &models.EmailTemplate{}, &models.EmailCampaign{}, &models.EmailSend{}, &models.EmailSequence{}, &models.EmailSequenceStep{}, &models.EmailSequenceEnrollment{}, &models.Segment{}, &models.Course{}, &models.CourseModule{}, &models.Lesson{}, &models.CourseEnrollment{}, &models.LessonProgress{}, &models.Quiz{}, &models.QuizQuestion{}, &models.QuizAttempt{}, &models.Certificate{}, &models.Product{}, &models.Price{}, &models.ProductVariant{}, &models.Coupon{}, &models.Order{}, &models.OrderItem{}, &models.Subscription{}, &models.Space{}, &models.CommunityMember{}, &models.Thread{}, &models.Reply{}, &models.Reaction{}, &models.CommunityEvent{}, &models.EventAttendee{}, &models.Funnel{}, &models.FunnelStep{}, &models.FunnelVisit{}, &models.FunnelConversion{}, &models.Calendar{}, &models.BookingEventType{}, &models.Availability{}, &models.Appointment{}, &models.AffiliateProgram{}, &models.AffiliateAccount{}, &models.AffiliateLink{}, &models.Commission{}, &models.Payout{}, &models.Workflow{}, &models.WorkflowAction{}, &models.WorkflowExecution{}, &models.PremiumGuide{}, &models.GuideDownload{} /* grit:studio */}, studioCfg)
+		studio.Mount(r, db, []interface{}{&models.Tenant{}, &models.User{}, &models.Upload{}, &models.Blog{}, &models.Setting{}, &models.MediaAsset{}, &models.Tag{}, &models.Contact{}, &models.ContactActivity{}, &models.CustomFieldDefinition{}, &models.Page{}, &models.Post{}, &models.PostCategory{}, &models.PostTag{}, &models.Menu{}, &models.MenuItem{}, &models.EmailList{}, &models.EmailSubscription{}, &models.EmailTemplate{}, &models.EmailCampaign{}, &models.EmailSend{}, &models.EmailSequence{}, &models.EmailSequenceStep{}, &models.EmailSequenceEnrollment{}, &models.Segment{}, &models.Course{}, &models.CourseModule{}, &models.Lesson{}, &models.CourseEnrollment{}, &models.LessonProgress{}, &models.Quiz{}, &models.QuizQuestion{}, &models.QuizAttempt{}, &models.Certificate{}, &models.Product{}, &models.Price{}, &models.ProductVariant{}, &models.Coupon{}, &models.Order{}, &models.OrderItem{}, &models.Subscription{}, &models.Space{}, &models.CommunityMember{}, &models.Thread{}, &models.Reply{}, &models.Reaction{}, &models.CommunityEvent{}, &models.EventAttendee{}, &models.Funnel{}, &models.FunnelStep{}, &models.FunnelVisit{}, &models.FunnelConversion{}, &models.Calendar{}, &models.BookingEventType{}, &models.Availability{}, &models.Appointment{}, &models.AffiliateProgram{}, &models.AffiliateAccount{}, &models.AffiliateLink{}, &models.Commission{}, &models.Payout{}, &models.Workflow{}, &models.WorkflowAction{}, &models.WorkflowExecution{}, &models.PremiumGuide{}, &models.GuideDownload{}, &models.AtlasContact{}, &models.AtlasInteraction{}, &models.AtlasProject{}, &models.AtlasCourse{}, &models.AtlasEnrollment{}, &models.AtlasAgentClient{}, &models.AtlasContent{}, &models.AtlasProduct{}, &models.AtlasRevenueEntry{}, &models.AtlasDailyLog{}, &models.AtlasWebsiteTask{} /* grit:studio */}, studioCfg)
 		log.Println("GORM Studio mounted at /studio")
 	}
 
@@ -117,7 +117,7 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 		Version:     "1.0.0",
 		UI:          gindocs.UIScalar,
 		ScalarTheme: "kepler",
-		Models:      []interface{}{&models.Tenant{}, &models.User{}, &models.Upload{}, &models.Blog{}, &models.Setting{}, &models.MediaAsset{}, &models.Tag{}, &models.Contact{}, &models.ContactActivity{}, &models.CustomFieldDefinition{}, &models.Page{}, &models.Post{}, &models.PostCategory{}, &models.PostTag{}, &models.Menu{}, &models.MenuItem{}, &models.EmailList{}, &models.EmailSubscription{}, &models.EmailTemplate{}, &models.EmailCampaign{}, &models.EmailSend{}, &models.EmailSequence{}, &models.EmailSequenceStep{}, &models.EmailSequenceEnrollment{}, &models.Segment{}, &models.Course{}, &models.CourseModule{}, &models.Lesson{}, &models.CourseEnrollment{}, &models.LessonProgress{}, &models.Quiz{}, &models.QuizQuestion{}, &models.QuizAttempt{}, &models.Certificate{}, &models.Product{}, &models.Price{}, &models.ProductVariant{}, &models.Coupon{}, &models.Order{}, &models.OrderItem{}, &models.Subscription{}, &models.Space{}, &models.CommunityMember{}, &models.Thread{}, &models.Reply{}, &models.Reaction{}, &models.CommunityEvent{}, &models.EventAttendee{}, &models.Funnel{}, &models.FunnelStep{}, &models.FunnelVisit{}, &models.FunnelConversion{}, &models.Calendar{}, &models.BookingEventType{}, &models.Availability{}, &models.Appointment{}, &models.AffiliateProgram{}, &models.AffiliateAccount{}, &models.AffiliateLink{}, &models.Commission{}, &models.Payout{}, &models.Workflow{}, &models.WorkflowAction{}, &models.WorkflowExecution{}, &models.PremiumGuide{}, &models.GuideDownload{}},
+		Models:      []interface{}{&models.Tenant{}, &models.User{}, &models.Upload{}, &models.Blog{}, &models.Setting{}, &models.MediaAsset{}, &models.Tag{}, &models.Contact{}, &models.ContactActivity{}, &models.CustomFieldDefinition{}, &models.Page{}, &models.Post{}, &models.PostCategory{}, &models.PostTag{}, &models.Menu{}, &models.MenuItem{}, &models.EmailList{}, &models.EmailSubscription{}, &models.EmailTemplate{}, &models.EmailCampaign{}, &models.EmailSend{}, &models.EmailSequence{}, &models.EmailSequenceStep{}, &models.EmailSequenceEnrollment{}, &models.Segment{}, &models.Course{}, &models.CourseModule{}, &models.Lesson{}, &models.CourseEnrollment{}, &models.LessonProgress{}, &models.Quiz{}, &models.QuizQuestion{}, &models.QuizAttempt{}, &models.Certificate{}, &models.Product{}, &models.Price{}, &models.ProductVariant{}, &models.Coupon{}, &models.Order{}, &models.OrderItem{}, &models.Subscription{}, &models.Space{}, &models.CommunityMember{}, &models.Thread{}, &models.Reply{}, &models.Reaction{}, &models.CommunityEvent{}, &models.EventAttendee{}, &models.Funnel{}, &models.FunnelStep{}, &models.FunnelVisit{}, &models.FunnelConversion{}, &models.Calendar{}, &models.BookingEventType{}, &models.Availability{}, &models.Appointment{}, &models.AffiliateProgram{}, &models.AffiliateAccount{}, &models.AffiliateLink{}, &models.Commission{}, &models.Payout{}, &models.Workflow{}, &models.WorkflowAction{}, &models.WorkflowExecution{}, &models.PremiumGuide{}, &models.GuideDownload{}, &models.AtlasContact{}, &models.AtlasInteraction{}, &models.AtlasProject{}, &models.AtlasCourse{}, &models.AtlasEnrollment{}, &models.AtlasAgentClient{}, &models.AtlasContent{}, &models.AtlasProduct{}, &models.AtlasRevenueEntry{}, &models.AtlasDailyLog{}, &models.AtlasWebsiteTask{}},
 		Auth: gindocs.AuthConfig{
 			Type:         gindocs.AuthBearer,
 			BearerFormat: "JWT",
@@ -205,6 +205,7 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 	workflowHandler := handlers.NewWorkflowHandler(db)
 	paymentHandler := handlers.NewPaymentHandler(db, cfg)
 	guideHandler := handlers.NewGuideHandler(db)
+	atlasHandler := handlers.NewAtlasHandler(db)
 	// grit:handlers
 
 	// Health check
@@ -789,6 +790,93 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 		admin.PUT("/guides/:id", guideHandler.UpdateGuide)
 		admin.DELETE("/guides/:id", guideHandler.DeleteGuide)
 		admin.GET("/guides/:id/referrals", guideHandler.GetGuideReferrals)
+
+		// --- ATLAS CRM ---
+		// Dashboard
+		admin.GET("/atlas/dashboard", atlasHandler.GetDashboard)
+
+		// Contacts
+		admin.GET("/atlas/contacts", atlasHandler.ListContacts)
+		admin.GET("/atlas/contacts/cold-leads", atlasHandler.GetColdLeads)
+		admin.GET("/atlas/contacts/pipeline", atlasHandler.GetPipeline)
+		admin.GET("/atlas/contacts/followups", atlasHandler.GetFollowups)
+		admin.GET("/atlas/contacts/:id", atlasHandler.GetContact)
+		admin.POST("/atlas/contacts", atlasHandler.CreateContact)
+		admin.PUT("/atlas/contacts/:id", atlasHandler.UpdateContact)
+		admin.DELETE("/atlas/contacts/:id", atlasHandler.DeleteContact)
+
+		// Interactions
+		admin.GET("/atlas/interactions", atlasHandler.ListInteractions)
+		admin.GET("/atlas/interactions/today", atlasHandler.GetTodayInteractions)
+		admin.GET("/atlas/interactions/stats", atlasHandler.GetInteractionStats)
+		admin.GET("/atlas/contacts/:id/interactions", atlasHandler.GetContactInteractions)
+		admin.POST("/atlas/interactions", atlasHandler.CreateInteraction)
+
+		// Projects
+		admin.GET("/atlas/projects", atlasHandler.ListProjects)
+		admin.GET("/atlas/projects/pipeline", atlasHandler.GetProjectPipeline)
+		admin.GET("/atlas/projects/revenue", atlasHandler.GetProjectRevenue)
+		admin.GET("/atlas/projects/overdue", atlasHandler.GetOverdueProjects)
+		admin.GET("/atlas/projects/:id", atlasHandler.GetProject)
+		admin.POST("/atlas/projects", atlasHandler.CreateProject)
+		admin.PUT("/atlas/projects/:id", atlasHandler.UpdateProject)
+
+		// Courses
+		admin.GET("/atlas/courses", atlasHandler.ListAtlasCourses)
+		admin.GET("/atlas/courses/stats", atlasHandler.GetAtlasCourseStats)
+		admin.GET("/atlas/courses/planned", atlasHandler.GetPlannedCourses)
+		admin.GET("/atlas/courses/:id/students", atlasHandler.GetAtlasCourseStudents)
+		admin.POST("/atlas/courses", atlasHandler.CreateAtlasCourse)
+		admin.PUT("/atlas/courses/:id", atlasHandler.UpdateAtlasCourse)
+		admin.POST("/atlas/courses/:id/enroll", atlasHandler.EnrollStudent)
+
+		// Agent Clients
+		admin.GET("/atlas/agent-clients", atlasHandler.ListAgentClients)
+		admin.GET("/atlas/agent-clients/active", atlasHandler.GetActiveAgentClients)
+		admin.GET("/atlas/agent-clients/revenue", atlasHandler.GetAgentRevenue)
+		admin.GET("/atlas/agent-clients/by-career", atlasHandler.GetAgentsByCareer)
+		admin.POST("/atlas/agent-clients", atlasHandler.CreateAgentClient)
+		admin.PUT("/atlas/agent-clients/:id", atlasHandler.UpdateAgentClient)
+
+		// Content
+		admin.GET("/atlas/content", atlasHandler.ListContent)
+		admin.GET("/atlas/content/calendar", atlasHandler.GetContentCalendar)
+		admin.GET("/atlas/content/stats", atlasHandler.GetContentStats)
+		admin.GET("/atlas/content/ideas", atlasHandler.GetContentIdeas)
+		admin.GET("/atlas/content/published/week", atlasHandler.GetPublishedThisWeek)
+		admin.POST("/atlas/content", atlasHandler.CreateContent)
+		admin.PUT("/atlas/content/:id", atlasHandler.UpdateContent)
+
+		// Products
+		admin.GET("/atlas/products", atlasHandler.ListAtlasProducts)
+		admin.GET("/atlas/products/stats", atlasHandler.GetAtlasProductStats)
+		admin.GET("/atlas/products/catalog", atlasHandler.GetAtlasProductCatalog)
+		admin.GET("/atlas/products/pipeline", atlasHandler.GetAtlasProductPipeline)
+		admin.POST("/atlas/products", atlasHandler.CreateAtlasProduct)
+		admin.PUT("/atlas/products/:id", atlasHandler.UpdateAtlasProduct)
+
+		// Revenue
+		admin.GET("/atlas/revenue", atlasHandler.ListRevenue)
+		admin.GET("/atlas/revenue/summary", atlasHandler.GetRevenueSummary)
+		admin.GET("/atlas/revenue/weekly", atlasHandler.GetWeeklyRevenue)
+		admin.GET("/atlas/revenue/monthly", atlasHandler.GetMonthlyRevenue)
+		admin.GET("/atlas/revenue/by-stream", atlasHandler.GetRevenueByStream)
+		admin.GET("/atlas/revenue/mrr", atlasHandler.GetMRR)
+		admin.POST("/atlas/revenue", atlasHandler.CreateRevenue)
+
+		// Daily Ops
+		admin.GET("/atlas/logs", atlasHandler.ListDailyLogs)
+		admin.GET("/atlas/logs/today", atlasHandler.GetTodayLog)
+		admin.GET("/atlas/logs/streak", atlasHandler.GetStreak)
+		admin.GET("/atlas/logs/weekly-summary", atlasHandler.GetWeeklyLogSummary)
+		admin.POST("/atlas/logs", atlasHandler.CreateOrUpdateLog)
+
+		// Websites
+		admin.GET("/atlas/websites", atlasHandler.ListWebsiteTasks)
+		admin.GET("/atlas/websites/:site/audit", atlasHandler.GetSiteAudit)
+		admin.GET("/atlas/websites/:site/blog", atlasHandler.GetSiteBlog)
+		admin.POST("/atlas/websites", atlasHandler.CreateWebsiteTask)
+		admin.PUT("/atlas/websites/:id", atlasHandler.UpdateWebsiteTask)
 
 		// grit:routes:admin
 	}

@@ -146,6 +146,18 @@ func Models() []interface{} {
 		&PremiumGuide{},
 		&GuideDownload{},
 		&GuideView{},
+		// --- ATLAS CRM ---
+		&AtlasContact{},
+		&AtlasInteraction{},
+		&AtlasProject{},
+		&AtlasCourse{},
+		&AtlasEnrollment{},
+		&AtlasAgentClient{},
+		&AtlasContent{},
+		&AtlasProduct{},
+		&AtlasRevenueEntry{},
+		&AtlasDailyLog{},
+		&AtlasWebsiteTask{},
 		// grit:models
 	}
 }

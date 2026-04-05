@@ -160,6 +160,13 @@ export function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobileClose }
       }))
     : [];
 
+  // ATLAS CRM navigation
+  const atlasItems = isAdmin
+    ? [
+        { label: "ATLAS", href: "/atlas", icon: "Compass" },
+      ]
+    : [];
+
   // Profile link is always visible
   const profileItem = { label: "Profile", href: "/profile", icon: "UserCircle" };
 
@@ -216,6 +223,38 @@ export function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobileClose }
               </Link>
             );
           })}
+
+          {/* ATLAS CRM */}
+          {atlasItems.length > 0 && isAdmin && (
+            <>
+              {!collapsed && (
+                <p className="px-3 mt-6 mb-2 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                  ATLAS CRM
+                </p>
+              )}
+              {collapsed && <div className="my-3 mx-3 border-t border-border" />}
+              {atlasItems.map((item) => {
+                const Icon = getIcon(item.icon);
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onMobileClose}
+                    title={collapsed ? item.label : undefined}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-accent/10 text-accent"
+                        : "text-text-secondary hover:bg-bg-hover hover:text-foreground"
+                    } ${collapsed ? "justify-center" : ""}`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span>{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </>
+          )}
 
           {/* Resource pages (from grit generate) */}
           {resourceItems.length > 0 && isAdmin && (
