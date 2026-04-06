@@ -30,6 +30,10 @@ import type {
   AtlasInteractionType,
   AtlasChannel,
   AtlasDirection,
+  AtlasSource,
+  AtlasContactType,
+  AtlasContactStatus,
+  AtlasICPProfile,
 } from "@repo/shared/types";
 
 // ---------------------------------------------------------------------------
@@ -351,7 +355,7 @@ function EditContactModal({
               <select
                 className={selectClass}
                 value={form.source}
-                onChange={(e) => setForm({ ...form, source: e.target.value })}
+                onChange={(e) => setForm({ ...form, source: e.target.value as AtlasSource })}
               >
                 {SOURCES.map((s) => (
                   <option key={s} value={s}>
@@ -365,7 +369,7 @@ function EditContactModal({
               <select
                 className={selectClass}
                 value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                onChange={(e) => setForm({ ...form, type: e.target.value as AtlasContactType })}
               >
                 {CONTACT_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -379,7 +383,7 @@ function EditContactModal({
               <select
                 className={selectClass}
                 value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                onChange={(e) => setForm({ ...form, status: e.target.value as AtlasContactStatus })}
               >
                 {CONTACT_STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -393,7 +397,7 @@ function EditContactModal({
               <select
                 className={selectClass}
                 value={form.icp_profile}
-                onChange={(e) => setForm({ ...form, icp_profile: e.target.value })}
+                onChange={(e) => setForm({ ...form, icp_profile: e.target.value as AtlasICPProfile })}
               >
                 {ICP_PROFILES.map((p) => (
                   <option key={p} value={p}>
