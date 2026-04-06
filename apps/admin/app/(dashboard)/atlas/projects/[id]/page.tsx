@@ -17,7 +17,7 @@ import {
   Pencil,
 } from "@/lib/icons";
 import { useAtlasProject, useUpdateAtlasProject } from "@/hooks/use-atlas";
-import type { AtlasProject } from "@repo/shared/types";
+import type { AtlasProject, AtlasProjectStatus, AtlasProjectStage } from "@repo/shared/types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -218,7 +218,7 @@ function EditProjectModal({
               <select
                 className={inputClass}
                 value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                onChange={(e) => setForm({ ...form, status: e.target.value as AtlasProjectStatus })}
               >
                 {PROJECT_STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -232,7 +232,7 @@ function EditProjectModal({
               <select
                 className={inputClass}
                 value={form.stage}
-                onChange={(e) => setForm({ ...form, stage: e.target.value })}
+                onChange={(e) => setForm({ ...form, stage: e.target.value as AtlasProjectStage })}
               >
                 {PROJECT_STAGES.map((s) => (
                   <option key={s} value={s}>
