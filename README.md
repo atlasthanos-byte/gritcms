@@ -52,7 +52,7 @@ Built with **Go** (Gin + GORM) backend and **Next.js** (App Router) frontend in 
 ### Step 1: Clone & Install Dependencies
 
 ```bash
-git clone https://github.com/your-org/gritcms.git
+git clone https://github.com/atlasthanos-byte/gritcms.git
 cd gritcms
 pnpm install
 ```
@@ -77,40 +77,25 @@ docker compose ps
 cp .env.example .env
 ```
 
-The defaults work out of the box with Docker Compose. For development you don't need to change anything — the `.env.example` is pre-configured to connect to the local Docker services.
+Then fix the database name — the `.env.example` has a wrong default (`myapp`), the actual DB created by Docker Compose is `gritcms`:
 
-If you want to customize, the key variables are:
+```bash
+sed -i 's|postgres://grit:grit@localhost:5432/myapp|postgres://grit:grit@localhost:5432/gritcms|' .env
+```
 
-| Variable | Default | Notes |
-|----------|---------|-------|
-| `JWT_SECRET` | `change-me-in-production` | Fine for dev, **must** change in prod |
-| `DATABASE_URL` | `postgres://grit:grit@localhost:5432/myapp?sslmode=disable` | Matches Docker Compose |
-| `REDIS_URL` | `redis://localhost:6379` | Matches Docker Compose |
-| `STORAGE_DRIVER` | `minio` | Uses local MinIO |
-| `RESEND_API_KEY` | `re_your_api_key` | Optional — use Mailhog in dev |
+Also disable Sentinel for local development (it blocks browser login requests):
+
+```bash
+sed -i 's/SENTINEL_ENABLED=true/SENTINEL_ENABLED=false/' .env
+```
 
 ### Step 4: Start the Application
-
-**Option A — Start everything at once:**
 
 ```bash
 pnpm dev
 ```
 
 This uses Turborepo to start the API (Air hot reload), admin panel, and public website in parallel.
-
-**Option B — Start services individually** (useful for debugging):
-
-```bash
-# Terminal 1: Go API with hot reload
-pnpm dev:api
-
-# Terminal 2: Admin panel (Next.js)
-pnpm dev:admin
-
-# Terminal 3: Public website (Next.js)
-pnpm dev:web
-```
 
 ### Step 5: Verify Everything Works
 
@@ -147,20 +132,199 @@ This creates:
 - 4 funnel templates (opt-in, sales page, webinar, launch)
 - 1 sample course with 3 modules and 6 lessons
 
-### Step 8: Test the Full Flow
+---
 
-1. **Create a page** — Admin → Pages → Create → Publish
-2. **Write a blog post** — Admin → Blog → New Post → Publish
-3. **Create an email list** — Admin → Email → Lists → Create
-4. **Subscribe via website** — Visit http://localhost:3000 → subscribe to a list
-5. **Check Mailhog** — http://localhost:8025 to see captured emails
-6. **Create a course** — Admin → Courses → Create → Add modules/lessons
-7. **Create a product** — Admin → Products → Create → Set pricing
-8. **Create a funnel** — Admin → Funnels → Use a seeded template
-9. **Set up booking** — Admin → Booking → Create calendar → Add event type
-10. **Test public booking** — Visit http://localhost:3000/book/your-event-slug
+## Troubleshooting
 
-### No Docker? No Problem
+### Go is not installed
+
+**Error:** `bash: go: command not found`
+
+Install Go 1.22+:
+
+```bash
+# Remove any old version first
+sudo apt remove golang-go
+
+# Download and install
+wget https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
+
+# Add to PATH permanently
+echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.bashrc
+source ~/.bashrc
+
+# Verify
+go version
+```
+
+---
+
+### Air is not installed
+
+**Error:** `sh: 1: air: not found`
+
+Install Air (Go live-reload tool):
+
+```bash
+go install github.com/air-verse/air@latest
+```
+
+Then make sure Go's bin directory is in your PATH:
+
+```bash
+echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.bashrc
+source ~/.bashrc
+```
+
+---
+
+### pnpm is not installed
+
+**Error:** `bash: pnpm: command not found`
+
+Install pnpm:
+
+```bash
+npm install -g pnpm
+```
+
+If Node.js is also missing:
+
+```bash
+# Install Node.js 20+
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Then install pnpm
+npm install -g pnpm
+```
+
+---
+
+### Docker is not installed
+
+**Error:** `bash: docker: command not found`
+
+Install Docker:
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+Verify:
+
+```bash
+docker --version
+docker compose version
+```
+
+---
+
+### Database does not exist
+
+**Error:** `FATAL: database "myapp" does not exist`
+
+The `.env.example` has a wrong database name. The Docker Compose config creates a database named `gritcms`, not `myapp`. Fix it:
+
+```bash
+sed -i 's|postgres://grit:grit@localhost:5432/myapp|postgres://grit:grit@localhost:5432/gritcms|' .env
+```
+
+---
+
+### Login returns 403 from the browser (but works via curl)
+
+**Cause:** Sentinel WAF is blocking browser requests in development.
+
+**Fix:** Disable Sentinel in `.env`:
+
+```bash
+sed -i 's/SENTINEL_ENABLED=true/SENTINEL_ENABLED=false/' .env
+```
+
+Then restart the API.
+
+---
+
+### Register endpoint returns validation error
+
+**Error:** `Field validation for 'FirstName' failed on the 'required' tag`
+
+The register endpoint requires `first_name` and `last_name` fields — not just `name`. Example:
+
+```bash
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"yourpassword","first_name":"Your","last_name":"Name"}'
+```
+
+---
+
+### API says DATABASE_URL is required
+
+**Error:** `Failed to load config: DATABASE_URL is required`
+
+You haven't created the `.env` file yet:
+
+```bash
+cp .env.example .env
+```
+
+---
+
+### Docker containers start but nothing runs on port 8080
+
+The Docker Compose file only starts infrastructure (Postgres, Redis, MinIO, Mailhog). The Go API runs separately via `pnpm dev` or `pnpm dev:api`. Make sure you run both:
+
+```bash
+# Terminal 1
+docker compose up -d
+
+# Terminal 2
+pnpm dev
+```
+
+---
+
+## Optional: Start Everything with One Script
+
+Save this as `start.sh` in the project root:
+
+```bash
+#!/bin/bash
+docker compose up -d
+pnpm dev
+```
+
+Make it executable:
+
+```bash
+chmod +x start.sh
+```
+
+Then just run `./start.sh` every time.
+
+---
+
+## Individual Service Commands (for debugging)
+
+```bash
+# Go API only (port 8080)
+pnpm dev:api
+
+# Admin panel only (port 3001)
+pnpm dev:admin
+
+# Public website only (port 3000)
+pnpm dev:web
+```
+
+---
+
+## No Docker? No Problem
 
 Use cloud services instead:
 
@@ -273,8 +437,6 @@ GORM_STUDIO_ENABLED=false
 
 ### Step 4: Configure Domains & SSL
 
-In the Dokploy service, go to **Domains** and add your domains. Dokploy handles SSL via Let's Encrypt automatically.
-
 You need **3 domains** (or subdomains):
 
 | Service | Domain | Container Port |
@@ -282,13 +444,6 @@ You need **3 domains** (or subdomains):
 | **API** | `api.yourdomain.com` | `8080` |
 | **Web** | `yourdomain.com` | `3000` |
 | **Admin** | `admin.yourdomain.com` | `3001` |
-
-For each domain:
-1. Click **Add Domain**
-2. Enter the domain/subdomain
-3. Set the **Container Port** to match the service
-4. Enable **HTTPS** (Let's Encrypt)
-5. Set the **Service Name** to the corresponding compose service (`api`, `web`, or `admin`)
 
 Make sure your DNS records point to the VPS IP:
 
@@ -300,55 +455,21 @@ A    admin.yourdomain.com    → YOUR_VPS_IP
 
 ### Step 5: Deploy
 
-Click **Deploy** in Dokploy. It will:
-1. Pull your code from Git
-2. Build all Docker images (API, Web, Admin)
-3. Start PostgreSQL and Redis
-4. Run database migrations automatically (GORM AutoMigrate)
-5. Start all services
+Click **Deploy** in Dokploy. First build takes 3-5 minutes.
 
-Monitor the build logs in the Dokploy dashboard. First build takes 3-5 minutes.
-
-### Step 6: Post-Deploy Setup
-
-1. **Create admin account** — Visit `https://admin.yourdomain.com` and register
-2. **Seed defaults** — Run from your local machine:
-   ```bash
-   curl -X POST https://api.yourdomain.com/api/admin/seed-defaults \
-     -H "Authorization: Bearer YOUR_TOKEN"
-   ```
-3. **Verify health** — `https://api.yourdomain.com/api/health`
-4. **Configure settings** — Admin → Settings → Site name, logo, theme
-
-### Step 7: Set Up Automatic Deployments (Optional)
-
-In Dokploy, enable **Auto Deploy** on the service:
-1. Go to the service settings
-2. Enable **Webhook** or **GitHub Integration**
-3. Every push to `main` will trigger a redeploy
-
-### Alternative: Deploy with docker-compose.prod.yml Directly
-
-If you prefer not to use Dokploy, you can deploy directly on any VPS:
+### Alternative: Deploy Directly on Any VPS
 
 ```bash
-# SSH into your server
 ssh user@your-vps-ip
-
-# Clone the repo
 git clone https://github.com/your-org/gritcms.git
 cd gritcms
-
-# Configure environment
 cp .env.example .env
 nano .env  # Set production values
-
-# Deploy
 chmod +x deploy.sh
 ./deploy.sh up
 ```
 
-Then use **Caddy** or **nginx** as a reverse proxy with SSL:
+Then use **Caddy** as a reverse proxy:
 
 ```
 # /etc/caddy/Caddyfile
@@ -443,7 +564,7 @@ See [.env.example](.env.example) for all available options. Key variables:
 | `AI_PROVIDER` | `claude`, `openai`, or `gemini` |
 | `AI_API_KEY` | API key for AI provider |
 | `CORS_ORIGINS` | Comma-separated allowed origins |
-| `SENTINEL_ENABLED` | Enable WAF & rate limiting |
+| `SENTINEL_ENABLED` | Enable WAF & rate limiting (disable in local dev) |
 | `PULSE_ENABLED` | Enable performance monitoring |
 
 ## API Endpoints
