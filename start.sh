@@ -1,5 +1,5 @@
 #!/bin/bash
-sudo systemctl docker start
+sudo systemctl start docker
 
 # Colors
 RED='\033[0;31m'

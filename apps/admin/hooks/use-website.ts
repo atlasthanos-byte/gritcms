@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import type { Page, Post, PostCategory, PostTag, Menu } from "@repo/shared/types";
@@ -52,7 +53,15 @@ export function useCreatePage() {
       qc.invalidateQueries({ queryKey: ["pages"] });
       toast.success("Page created");
     },
-    onError: () => toast.error("Failed to create page"),
+    onError: (error) => {
+      if (axios.isAxiosError(error)) {
+        const message =
+          (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message;
+        toast.error(message || "Failed to create page");
+        return;
+      }
+      toast.error("Failed to create page");
+    },
   });
 }
 
@@ -68,7 +77,15 @@ export function useUpdatePage() {
       qc.invalidateQueries({ queryKey: ["pages", vars.id] });
       toast.success("Page updated");
     },
-    onError: () => toast.error("Failed to update page"),
+    onError: (error) => {
+      if (axios.isAxiosError(error)) {
+        const message =
+          (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message;
+        toast.error(message || "Failed to update page");
+        return;
+      }
+      toast.error("Failed to update page");
+    },
   });
 }
 

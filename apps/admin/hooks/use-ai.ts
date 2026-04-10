@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
+import axios from "axios";
 import { apiClient } from "@/lib/api-client";
 
 interface AIResponse {
@@ -12,12 +13,23 @@ interface AIResponse {
 export function useAIComplete() {
   return useMutation({
     mutationFn: async ({ prompt, maxTokens = 1000, temperature = 0.7 }: { prompt: string; maxTokens?: number; temperature?: number }) => {
-      const { data } = await apiClient.post("/api/ai/complete", {
-        prompt,
-        max_tokens: maxTokens,
-        temperature,
-      });
-      return data.data as AIResponse;
+      try {
+        const { data } = await apiClient.post("/api/ai/complete", {
+          prompt,
+          max_tokens: maxTokens,
+          temperature,
+        });
+        return data.data as AIResponse;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          const message =
+            (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message ||
+            error.message ||
+            "Failed to generate content. Please try again.";
+          throw new Error(message);
+        }
+        throw error;
+      }
     },
   });
 }

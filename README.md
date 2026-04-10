@@ -52,7 +52,7 @@ Built with **Go** (Gin + GORM) backend and **Next.js** (App Router) frontend in 
 ### Step 1: Clone & Install Dependencies
 
 ```bash
-git clone https://github.com/atlasthanos-byte/gritcms.git
+git clone https://github.com/atlasthanos-byte/gritcmscms.git
 cd gritcms
 pnpm install
 ```

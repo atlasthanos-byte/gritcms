@@ -49,20 +49,22 @@ type Config struct {
 	GORMStudioPassword string
 
 	// AI
-	AIProvider string // "claude", "openai", or "gemini"
+	AIProvider string // "claude", "openai", "groq", "gemini", or "ollama"
 	AIAPIKey   string
 	AIModel    string
+	AIEndpoint string // Ollama endpoint (e.g. http://localhost:11434)
+	AIEnabled  bool   // Whether AI service is enabled
 
 	// Security (Sentinel)
 	SentinelEnabled   bool
-	SentinelUsername   string
+	SentinelUsername  string
 	SentinelPassword  string
 	SentinelSecretKey string
 
 	// Observability (Pulse)
-	PulseEnabled   bool
-	PulseUsername   string
-	PulsePassword  string
+	PulseEnabled  bool
+	PulseUsername string
+	PulsePassword string
 
 	// OAuth2 Social Login
 	GoogleClientID     string
@@ -115,12 +117,14 @@ func Load() (*Config, error) {
 		GORMStudioUsername: getEnv("GORM_STUDIO_USERNAME", "admin"),
 		GORMStudioPassword: getEnv("GORM_STUDIO_PASSWORD", "studio"),
 
-		AIProvider: getEnv("AI_PROVIDER", "claude"),
+		AIProvider: getEnv("AI_PROVIDER", "ollama"),
 		AIAPIKey:   getEnv("AI_API_KEY", ""),
-		AIModel:    getEnv("AI_MODEL", "claude-sonnet-4-5-20250929"),
+		AIModel:    getEnv("AI_MODEL", "llama3.2"),
+		AIEndpoint: getEnv("AI_ENDPOINT", "http://localhost:11434"),
+		AIEnabled:  getEnv("AI_ENABLED", "true") == "true",
 
 		SentinelEnabled:   getEnv("SENTINEL_ENABLED", "true") == "true",
-		SentinelUsername:   getEnv("SENTINEL_USERNAME", "admin"),
+		SentinelUsername:  getEnv("SENTINEL_USERNAME", "admin"),
 		SentinelPassword:  getEnv("SENTINEL_PASSWORD", "sentinel"),
 		SentinelSecretKey: getEnv("SENTINEL_SECRET_KEY", "sentinel-secret-change-me"),
 

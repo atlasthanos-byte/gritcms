@@ -42,26 +42,99 @@ type Usage struct {
 // StreamHandler is called for each chunk of a streamed response.
 type StreamHandler func(chunk string) error
 
-// AI provides text generation via Claude or OpenAI APIs.
+// AI provides text generation via Claude, OpenAI, Groq, Gemini, or Ollama APIs.
 type AI struct {
 	provider string
 	apiKey   string
 	model    string
+	endpoint string
 	client   *http.Client
+	enabled  bool
+}
+
+// Config holds runtime AI configuration.
+type Config struct {
+	Provider string
+	APIKey   string
+	Model    string
+	Endpoint string
+	Enabled  bool
 }
 
 // New creates a new AI service instance.
 func New(provider, apiKey, model string) *AI {
+	return newAI(provider, apiKey, model, "", true)
+}
+
+// NewWithConfig creates a new AI service with full configuration.
+func NewWithConfig(cfg Config) *AI {
+	provider := strings.ToLower(cfg.Provider)
+	if provider == "" {
+		provider = "claude"
+	}
+	return newAI(provider, cfg.APIKey, cfg.Model, cfg.Endpoint, cfg.Enabled)
+}
+
+func newAI(provider, apiKey, model, endpoint string, enabled bool) *AI {
+	if endpoint == "" {
+		endpoint = "http://localhost:11434"
+	}
 	return &AI{
-		provider: strings.ToLower(provider),
+		provider: provider,
 		apiKey:   apiKey,
 		model:    model,
+		endpoint: endpoint,
 		client:   &http.Client{Timeout: 120 * time.Second},
+		enabled:  enabled,
 	}
+}
+
+// IsEnabled returns whether the AI service is enabled.
+func (a *AI) IsEnabled() bool {
+	if !a.enabled {
+		return false
+	}
+	// For cloud providers, need API key; for Ollama, endpoint is enough
+	if a.provider == "ollama" {
+		return a.enabled
+	}
+	return a.enabled && a.apiKey != ""
+}
+
+// GetConfig returns the current AI configuration.
+func (a *AI) GetConfig() Config {
+	return Config{
+		Provider: a.provider,
+		APIKey:   a.apiKey,
+		Model:    a.model,
+		Endpoint: a.endpoint,
+		Enabled:  a.enabled,
+	}
+}
+
+// UpdateConfig updates the AI configuration at runtime.
+func (a *AI) UpdateConfig(cfg Config) {
+	if cfg.Provider != "" {
+		a.provider = strings.ToLower(cfg.Provider)
+	}
+	if cfg.APIKey != "" {
+		a.apiKey = cfg.APIKey
+	}
+	if cfg.Model != "" {
+		a.model = cfg.Model
+	}
+	if cfg.Endpoint != "" {
+		a.endpoint = cfg.Endpoint
+	}
+	a.enabled = cfg.Enabled
 }
 
 // Complete generates a response from a single prompt.
 func (a *AI) Complete(ctx context.Context, req CompletionRequest) (*CompletionResponse, error) {
+	if !a.enabled {
+		return nil, fmt.Errorf("AI service is disabled")
+	}
+
 	messages := req.Messages
 	if len(messages) == 0 && req.Prompt != "" {
 		messages = []Message{{Role: "user", Content: req.Prompt}}
@@ -74,8 +147,12 @@ func (a *AI) Complete(ctx context.Context, req CompletionRequest) (*CompletionRe
 	switch a.provider {
 	case "openai":
 		return a.openaiComplete(ctx, messages, req.MaxTokens, req.Temperature)
+	case "groq":
+		return a.groqComplete(ctx, messages, req.MaxTokens, req.Temperature)
 	case "gemini":
 		return a.geminiComplete(ctx, messages, req.MaxTokens, req.Temperature)
+	case "ollama":
+		return a.ollamaComplete(ctx, messages, req.MaxTokens, req.Temperature)
 	default:
 		return a.claudeComplete(ctx, messages, req.MaxTokens, req.Temperature)
 	}
@@ -83,6 +160,10 @@ func (a *AI) Complete(ctx context.Context, req CompletionRequest) (*CompletionRe
 
 // Stream generates a streaming response, calling handler for each chunk.
 func (a *AI) Stream(ctx context.Context, req CompletionRequest, handler StreamHandler) error {
+	if !a.enabled {
+		return fmt.Errorf("AI service is disabled")
+	}
+
 	messages := req.Messages
 	if len(messages) == 0 && req.Prompt != "" {
 		messages = []Message{{Role: "user", Content: req.Prompt}}
@@ -95,8 +176,12 @@ func (a *AI) Stream(ctx context.Context, req CompletionRequest, handler StreamHa
 	switch a.provider {
 	case "openai":
 		return a.openaiStream(ctx, messages, req.MaxTokens, req.Temperature, handler)
+	case "groq":
+		return a.groqStream(ctx, messages, req.MaxTokens, req.Temperature, handler)
 	case "gemini":
 		return a.geminiStream(ctx, messages, req.MaxTokens, req.Temperature, handler)
+	case "ollama":
+		return a.ollamaStream(ctx, messages, req.MaxTokens, req.Temperature, handler)
 	default:
 		return a.claudeStream(ctx, messages, req.MaxTokens, req.Temperature, handler)
 	}
@@ -377,6 +462,143 @@ func (a *AI) openaiStream(ctx context.Context, messages []Message, maxTokens int
 
 // ── Gemini (Google) ──────────────────────────────────────────
 
+func (a *AI) groqComplete(ctx context.Context, messages []Message, maxTokens int, temperature float64) (*CompletionResponse, error) {
+	body := map[string]interface{}{
+		"model":      a.model,
+		"max_tokens": maxTokens,
+		"messages":   messages,
+	}
+	if temperature > 0 {
+		body["temperature"] = temperature
+	}
+
+	data, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.groq.com/openai/v1/chat/completions", bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+a.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("calling Groq API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Groq API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+		Model string `json:"model"`
+		Usage struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+		} `json:"usage"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decoding response: %w", err)
+	}
+
+	content := ""
+	if len(result.Choices) > 0 {
+		content = result.Choices[0].Message.Content
+	}
+
+	return &CompletionResponse{
+		Content: content,
+		Model:   result.Model,
+		Usage: &Usage{
+			InputTokens:  result.Usage.PromptTokens,
+			OutputTokens: result.Usage.CompletionTokens,
+		},
+	}, nil
+}
+
+func (a *AI) groqStream(ctx context.Context, messages []Message, maxTokens int, temperature float64, handler StreamHandler) error {
+	body := map[string]interface{}{
+		"model":      a.model,
+		"max_tokens": maxTokens,
+		"messages":   messages,
+		"stream":     true,
+	}
+	if temperature > 0 {
+		body["temperature"] = temperature
+	}
+
+	data, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshaling request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.groq.com/openai/v1/chat/completions", bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+a.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("calling Groq API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("Groq API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+
+		data := strings.TrimPrefix(line, "data: ")
+		if data == "[DONE]" {
+			break
+		}
+
+		var event struct {
+			Choices []struct {
+				Delta struct {
+					Content string `json:"content"`
+				} `json:"delta"`
+			} `json:"choices"`
+		}
+
+		if err := json.Unmarshal([]byte(data), &event); err != nil {
+			continue
+		}
+
+		if len(event.Choices) > 0 && event.Choices[0].Delta.Content != "" {
+			if err := handler(event.Choices[0].Delta.Content); err != nil {
+				return err
+			}
+		}
+	}
+
+	return scanner.Err()
+}
+
+// ── Gemini (Google) ──────────────────────────────────────────
+
 func (a *AI) geminiComplete(ctx context.Context, messages []Message, maxTokens int, temperature float64) (*CompletionResponse, error) {
 	// Convert messages to Gemini format
 	contents := make([]map[string]interface{}, 0, len(messages))
@@ -539,6 +761,183 @@ func (a *AI) geminiStream(ctx context.Context, messages []Message, maxTokens int
 					return err
 				}
 			}
+		}
+	}
+
+	return scanner.Err()
+}
+
+// ── Ollama (Local) ────────────────────────────────────────────
+
+// ListModels returns available models from Ollama.
+func (a *AI) ListModels(ctx context.Context) ([]string, error) {
+	url := a.endpoint + "/api/tags"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("calling Ollama API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		Models []struct {
+			Name string `json:"name"`
+		} `json:"models"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decoding response: %w", err)
+	}
+
+	models := make([]string, len(result.Models))
+	for i, m := range result.Models {
+		models[i] = m.Name
+	}
+	return models, nil
+}
+
+func (a *AI) ollamaComplete(ctx context.Context, messages []Message, maxTokens int, temperature float64) (*CompletionResponse, error) {
+	var prompt string
+	for _, msg := range messages {
+		role := msg.Role
+		if role == "assistant" {
+			role = "assistant"
+		}
+		prompt += fmt.Sprintf("<|im_start|>%s\n%s<|im_end|>\n", role, msg.Content)
+	}
+	prompt += "<|im_start|>assistant\n"
+
+	body := map[string]interface{}{
+		"model":  a.model,
+		"prompt": prompt,
+		"stream": false,
+		"options": map[string]interface{}{
+			"temperature": temperature,
+			"num_predict": maxTokens,
+		},
+	}
+
+	data, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling request: %w", err)
+	}
+
+	url := a.endpoint + "/api/generate"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("calling Ollama API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		Response string `json:"response"`
+		Model    string `json:"model"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decoding response: %w", err)
+	}
+
+	return &CompletionResponse{
+		Content: result.Response,
+		Model:   result.Model,
+	}, nil
+}
+
+func (a *AI) ollamaStream(ctx context.Context, messages []Message, maxTokens int, temperature float64, handler StreamHandler) error {
+	var prompt string
+	for _, msg := range messages {
+		role := msg.Role
+		if role == "assistant" {
+			role = "assistant"
+		}
+		prompt += fmt.Sprintf("<|im_start|>%s\n%s<|im_end|>\n", role, msg.Content)
+	}
+	prompt += "<|im_start|>assistant\n"
+
+	body := map[string]interface{}{
+		"model":  a.model,
+		"prompt": prompt,
+		"stream": true,
+		"options": map[string]interface{}{
+			"temperature": temperature,
+			"num_predict": maxTokens,
+		},
+	}
+
+	data, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshaling request: %w", err)
+	}
+
+	url := a.endpoint + "/api/generate"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("calling Ollama API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+
+		data := strings.TrimPrefix(line, "data: ")
+		if data == "[DONE]" {
+			break
+		}
+
+		var event struct {
+			Response string `json:"response"`
+			Done     bool   `json:"done"`
+		}
+
+		if err := json.Unmarshal([]byte(data), &event); err != nil {
+			continue
+		}
+
+		if event.Response != "" {
+			if err := handler(event.Response); err != nil {
+				return err
+			}
+		}
+		if event.Done {
+			break
 		}
 	}
 

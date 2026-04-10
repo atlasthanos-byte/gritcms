@@ -116,7 +116,9 @@ Return ONLY a valid JSON object with the updated props. Keep the same structure 
         setError(
           err instanceof SyntaxError
             ? "AI returned an invalid response. Try again with a simpler prompt."
-            : "Failed to generate content. Please try again."
+            : err instanceof Error && err.message
+              ? err.message
+              : "Failed to generate content. Please try again."
         );
       }
     },

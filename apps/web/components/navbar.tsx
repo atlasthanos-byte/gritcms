@@ -97,7 +97,7 @@ export function Navbar() {
             {colorMode === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           <a
-            href="https://github.com/MUKE-coder/grit"
+            href="https://github.com/atlasthanos-byte/gritcms"
             target="_blank"
             rel="noopener noreferrer"
             className="text-text-secondary hover:text-foreground transition-colors"
@@ -217,7 +217,7 @@ export function Navbar() {
               {colorMode === "dark" ? "Light mode" : "Dark mode"}
             </button>
             <a
-              href="https://github.com/MUKE-coder/grit"
+              href="https://github.com/atlasthanos-byte/gritcms"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm py-2 text-text-secondary hover:text-foreground transition-colors"

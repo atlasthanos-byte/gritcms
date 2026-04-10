@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -108,11 +108,22 @@ export default function FunnelEditorPage() {
   const [showStepModal, setShowStepModal] = useState(false);
   const [editingStepId, setEditingStepId] = useState<number | null>(null);
   const [stepForm, setStepForm] = useState<StepForm>(emptyStepForm);
+  const webBaseUrl = useMemo(() => {
+    const envUrl = (process.env.NEXT_PUBLIC_WEB_URL || "").trim();
+    if (envUrl) return envUrl.replace(/\/$/, "");
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.origin);
+      if (url.port === "3001") url.port = "3000";
+      return url.toString().replace(/\/$/, "");
+    }
+    return "";
+  }, []);
 
   // Sorted steps
   const sortedSteps = [...(funnel?.steps ?? [])].sort(
     (a, b) => a.sort_order - b.sort_order
   );
+  const firstStepSlug = sortedSteps[0]?.slug;
 
   // -------------------------------------------------------------------------
   // Handlers
@@ -256,6 +267,40 @@ export default function FunnelEditorPage() {
 
         {/* Status dropdown */}
         <div className="flex items-center gap-2">
+          <a
+            href={
+              webBaseUrl && funnel.status === "active"
+                ? `${webBaseUrl}/f/${funnel.slug}`
+                : "#"
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-foreground transition-colors"
+            onClick={(e) => {
+              if (!webBaseUrl || funnel.status !== "active") e.preventDefault();
+            }}
+            title={funnel.status !== "active" ? "Set status to Active to preview publicly" : "Open funnel preview"}
+          >
+            <Eye className="h-4 w-4" />
+            Preview
+          </a>
+          <a
+            href={
+              webBaseUrl && firstStepSlug && funnel.status === "active"
+                ? `${webBaseUrl}/f/${funnel.slug}/${firstStepSlug}`
+                : "#"
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-foreground transition-colors"
+            onClick={(e) => {
+              if (!webBaseUrl || !firstStepSlug || funnel.status !== "active") e.preventDefault();
+            }}
+            title={funnel.status !== "active" ? "Set status to Active to test first step" : "Open first step URL"}
+          >
+            <ArrowRight className="h-4 w-4" />
+            Test
+          </a>
           <select
             value={funnel.status}
             onChange={(e) =>

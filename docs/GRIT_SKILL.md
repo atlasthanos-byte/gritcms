@@ -566,7 +566,7 @@ ai.Stream(ctx, req, func(chunk string) { /* SSE */ })
 
 ### Security (Sentinel)
 
-Built-in security suite powered by [Sentinel](https://github.com/MUKE-coder/sentinel):
+Built-in security suite powered by [Sentinel](https://github.com/atlasthanos-byte/sentinel):
 - **WAF** — SQL injection, XSS, path traversal detection
 - **Rate Limiting** — Per-IP request throttling
 - **Brute-Force Protection** — Account lockout after failed logins
@@ -577,7 +577,7 @@ Enabled by default. Disable with `SENTINEL_ENABLED=false`.
 
 ### Observability (Pulse)
 
-Built-in observability SDK powered by [Pulse](https://github.com/MUKE-coder/pulse):
+Built-in observability SDK powered by [Pulse](https://github.com/atlasthanos-byte/pulse):
 - **Request Tracing** — HTTP method, path, status, latency
 - **Database Monitoring** — Query count, slow queries, pool stats
 - **Runtime Metrics** — Memory, goroutines, GC stats
@@ -591,7 +591,7 @@ Enabled by default. Disable with `PULSE_ENABLED=false`.
 
 ### API Documentation (gin-docs)
 
-Auto-generated docs via [gin-docs](https://github.com/MUKE-coder/gin-docs):
+Auto-generated docs via [gin-docs](https://github.com/atlasthanos-byte/gin-docs):
 - Introspects Gin routes and GORM models — zero annotations needed
 - OpenAPI 3.1 spec at `/docs/openapi.json`
 - Interactive UI at `/docs` (Scalar theme)

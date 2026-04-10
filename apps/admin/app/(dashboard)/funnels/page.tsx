@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -79,6 +79,16 @@ export default function FunnelsPage() {
   const { data, isLoading } = useFunnels(page, search, statusFilter);
   const { mutate: createFunnel } = useCreateFunnel();
   const { mutate: deleteFunnel } = useDeleteFunnel();
+  const webBaseUrl = useMemo(() => {
+    const envUrl = (process.env.NEXT_PUBLIC_WEB_URL || "").trim();
+    if (envUrl) return envUrl.replace(/\/$/, "");
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.origin);
+      if (url.port === "3001") url.port = "3000";
+      return url.toString().replace(/\/$/, "");
+    }
+    return "";
+  }, []);
 
   const funnels = data?.data ?? [];
   const meta = data?.meta;
@@ -249,6 +259,12 @@ export default function FunnelsPage() {
           ))}
         </div>
       </div>
+      <div className="rounded-lg border border-border bg-bg-secondary px-3 py-2">
+        <p className="text-xs text-text-muted">
+          Preview/Test links open the public funnel route at <code>/f/&lt;funnel-slug&gt;</code>. Funnel must be{" "}
+          <span className="font-medium text-foreground">Active</span>.
+        </p>
+      </div>
 
       {/* Create Funnel Modal */}
       {showCreate && (
@@ -359,6 +375,12 @@ export default function FunnelsPage() {
               const steps = [...(funnel.steps ?? [])].sort(
                 (a, b) => a.sort_order - b.sort_order
               );
+              const firstStepSlug = steps[0]?.slug;
+              const previewUrl = webBaseUrl ? `${webBaseUrl}/f/${funnel.slug}` : "";
+              const testStepUrl =
+                webBaseUrl && firstStepSlug
+                  ? `${webBaseUrl}/f/${funnel.slug}/${firstStepSlug}`
+                  : previewUrl;
               const visits = funnel.visit_count ?? 0;
               const conversions = funnel.conversion_count ?? 0;
 
@@ -441,6 +463,32 @@ export default function FunnelsPage() {
 
                   {/* Actions */}
                   <div className="flex items-center justify-end gap-1 border-t border-border/50 pt-3">
+                    <a
+                      href={previewUrl || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-foreground transition-colors"
+                      onClick={(e) => {
+                        if (!previewUrl || funnel.status !== "active") e.preventDefault();
+                      }}
+                      title={funnel.status !== "active" ? "Set funnel status to Active to preview" : "Open funnel preview"}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      Preview
+                    </a>
+                    <a
+                      href={testStepUrl || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-foreground transition-colors"
+                      onClick={(e) => {
+                        if (!testStepUrl || funnel.status !== "active") e.preventDefault();
+                      }}
+                      title={funnel.status !== "active" ? "Set funnel status to Active to test first step" : "Open first step URL"}
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" />
+                      Test
+                    </a>
                     <Link
                       href={`/funnels/${funnel.id}`}
                       className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent/10 transition-colors"

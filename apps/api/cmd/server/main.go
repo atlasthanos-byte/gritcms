@@ -82,9 +82,20 @@ func main() {
 
 	// AI service
 	var aiService *ai.AI
-	if cfg.AIAPIKey != "" {
-		aiService = ai.New(cfg.AIProvider, cfg.AIAPIKey, cfg.AIModel)
-		log.Printf("AI service configured (%s)", cfg.AIProvider)
+	aiEnabled := cfg.AIEnabled
+	// Enable by default if using Ollama or if API key is set
+	if cfg.AIProvider == "ollama" || cfg.AIAPIKey != "" {
+		aiEnabled = true
+	}
+	if aiEnabled {
+		aiService = ai.NewWithConfig(ai.Config{
+			Provider: cfg.AIProvider,
+			APIKey:   cfg.AIAPIKey,
+			Model:    cfg.AIModel,
+			Endpoint: cfg.AIEndpoint,
+			Enabled:  aiEnabled,
+		})
+		log.Printf("AI service configured (%s, endpoint: %s)", cfg.AIProvider, cfg.AIEndpoint)
 	}
 
 	// Background jobs (asynq)

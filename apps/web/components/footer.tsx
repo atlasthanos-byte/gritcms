@@ -15,7 +15,7 @@ export function Footer() {
   const { data: theme } = useTheme();
 
   const footerLinks = footerMenu?.items?.map(menuItemToLink) ?? [
-    { href: "https://github.com/MUKE-coder/grit", label: "GitHub", target: "_blank" },
+    { href: "https://github.com/atlasthanos-byte/gritcms", label: "GitHub", target: "_blank" },
     { href: "https://grit-vert.vercel.app/docs", label: "Documentation", target: "_blank" },
   ];
 

@@ -18,7 +18,10 @@ import {
   Unplug,
   Server,
   Monitor,
+  Zap,
+  Loader2,
 } from "@/lib/icons";
+import { apiClient } from "@/lib/api-client";
 import { useSystemInfo } from "@/hooks/use-analytics";
 import { Dropzone, type UploadedFile } from "@/components/ui/dropzone";
 import {
@@ -77,6 +80,7 @@ const tabs = [
   { id: "branding", label: "Branding", icon: Palette },
   { id: "social", label: "Social", icon: Share2 },
   { id: "seo", label: "SEO", icon: Search },
+  { id: "ai", label: "AI", icon: Zap },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "system", label: "System", icon: Server },
 ];
@@ -121,12 +125,14 @@ export default function SettingsPage() {
   // Load settings from separate groups
   const { data: themeData, isLoading: themeLoading } = useSettings("theme");
   const { data: seoData, isLoading: seoLoading } = useSettings("seo");
+  const { data: aiData, isLoading: aiLoading } = useSettings("ai");
   const { data: intData, isLoading: intLoading } = useSettings("integrations");
   const { mutate: save, isPending: saving } = useUpdateSettings();
 
   // Local form state
   const [theme, setTheme] = useState<Record<string, string>>({});
   const [seo, setSeo] = useState<Record<string, string>>({});
+  const [ai, setAI] = useState<Record<string, string>>({});
   const [integrations, setIntegrations] = useState<Record<string, string>>({});
 
   // Seed local state once fetched
@@ -139,6 +145,45 @@ export default function SettingsPage() {
   }, [seoData]);
 
   useEffect(() => {
+    if (aiData) setAI(aiData);
+  }, [aiData]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRuntimeAIConfig = async () => {
+      try {
+        const { data } = await apiClient.get("/api/ai/config");
+        const runtime = data?.data as
+          | {
+              provider?: string;
+              model?: string;
+              endpoint?: string;
+              enabled?: boolean;
+            }
+          | undefined;
+        if (!runtime || cancelled) return;
+
+        setAI((prev) => ({
+          ...prev,
+          ai_provider: runtime.provider || prev.ai_provider || "ollama",
+          ai_model: runtime.model || prev.ai_model || "",
+          ai_endpoint:
+            runtime.endpoint || prev.ai_endpoint || "http://localhost:11434",
+          ai_enabled: runtime.enabled === false ? "false" : "true",
+        }));
+      } catch (err) {
+        console.error("Failed to load runtime AI config:", err);
+      }
+    };
+
+    loadRuntimeAIConfig();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (intData) setIntegrations(intData);
   }, [intData]);
 
@@ -146,12 +191,27 @@ export default function SettingsPage() {
     setTheme((prev) => ({ ...prev, [key]: value }));
   const updateSeo = (key: string, value: string) =>
     setSeo((prev) => ({ ...prev, [key]: value }));
+  const updateAI = (key: string, value: string) =>
+    setAI((prev) => ({ ...prev, [key]: value }));
   const updateInt = (key: string, value: string) =>
     setIntegrations((prev) => ({ ...prev, [key]: value }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (activeTab === "seo") {
       save({ group: "seo", settings: seo });
+    } else if (activeTab === "ai") {
+      try {
+        await apiClient.put("/api/ai/config", {
+          provider: ai.ai_provider,
+          api_key: ai.ai_api_key,
+          model: ai.ai_model,
+          endpoint: ai.ai_endpoint,
+          enabled: ai.ai_enabled === "true",
+        });
+        save({ group: "ai", settings: ai });
+      } catch (err) {
+        console.error("Failed to update AI config:", err);
+      }
     } else if (activeTab === "integrations") {
       save({ group: "integrations", settings: integrations });
     } else {
@@ -159,7 +219,7 @@ export default function SettingsPage() {
     }
   };
 
-  const isLoading = themeLoading || seoLoading || intLoading;
+  const isLoading = themeLoading || seoLoading || aiLoading || intLoading;
 
   if (isLoading) {
     return (
@@ -228,6 +288,7 @@ export default function SettingsPage() {
           <SocialTab theme={theme} onChange={updateTheme} />
         )}
         {activeTab === "seo" && <SeoTab seo={seo} onChange={updateSeo} />}
+        {activeTab === "ai" && <AITab ai={ai} onChange={updateAI} />}
         {activeTab === "integrations" && (
           <IntegrationsTab integrations={integrations} onChange={updateInt} />
         )}
@@ -776,6 +837,218 @@ function IntegrationsTab({
           (ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET) take
           precedence if set.
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── AI Tab ──────────────────────────────────────────────────── */
+function AITab({
+  ai,
+  onChange,
+}: {
+  ai: Record<string, string>;
+  onChange: (k: string, v: string) => void;
+}) {
+  const [models, setModels] = useState<string[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const provider = ai.ai_provider || "ollama";
+  const isLocal = provider === "ollama";
+
+  const handleFetchModels = async () => {
+    setFetchingModels(true);
+    setFetchError(null);
+    try {
+      const { data } = await apiClient.get("/api/ai/models", {
+        params: {
+          provider: provider,
+          endpoint: ai.ai_endpoint || "http://localhost:11434",
+        },
+      });
+      setModels(data.data as string[]);
+    } catch (err) {
+      setFetchError("Failed to fetch models. Is Ollama running?");
+      console.error(err);
+    } finally {
+      setFetchingModels(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-1">
+          AI Configuration
+        </h2>
+        <p className="text-sm text-text-secondary">
+          Configure your AI provider for content generation in the page builder.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-foreground">Provider Type</label>
+        <div className="flex gap-2">
+          {[
+            { id: "ollama", label: "Local (Ollama)", desc: "Run models locally" },
+            { id: "claude", label: "Cloud (Anthropic)", desc: "Claude API" },
+            { id: "openai", label: "Cloud (OpenAI)", desc: "GPT models" },
+            { id: "groq", label: "Cloud (Groq)", desc: "Fast open-source models" },
+            { id: "gemini", label: "Cloud (Google)", desc: "Gemini models" },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => onChange("ai_provider", opt.id)}
+              className={`flex-1 rounded-lg border p-3 text-left transition-all ${
+                provider === opt.id
+                  ? "border-accent bg-accent/5"
+                  : "border-border bg-bg-tertiary hover:bg-bg-hover"
+              }`}
+            >
+              <span className="block text-sm font-medium text-foreground">
+                {opt.label}
+              </span>
+              <span className="block text-xs text-text-muted">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isLocal ? (
+        <>
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
+            <p className="text-xs text-yellow-400">
+              💡 Tip: Open browser DevTools (F12) → Network → filter "api/ai" → 
+              check the request URL. That's where calls come from.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-foreground">
+              Ollama Endpoint
+            </label>
+            <select
+              value={ai.ai_endpoint || "http://localhost:11434"}
+              onChange={(e) => onChange("ai_endpoint", e.target.value)}
+              className="w-full rounded-lg border border-border bg-bg-tertiary px-4 py-2.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              <option value="http://localhost:11434">localhost (most common)</option>
+              <option value="http://127.0.0.1:11434">127.0.0.1</option>
+              <option value="http://host.docker.internal:11434">host.docker.internal (Docker)</option>
+              <option value="http://10.0.2.2:11434">10.0.2.2 (Docker VM)</option>
+              <option value="http://172.17.0.1:11434">172.17.0.1 (Docker bridge)</option>
+            </select>
+            <p className="text-xs text-text-muted">
+              Select the address your API server can reach Ollama at
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleFetchModels}
+              disabled={fetchingModels}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-bg-hover transition-colors disabled:opacity-50"
+            >
+              <Loader2
+                className={`h-4 w-4 ${fetchingModels ? "animate-spin" : ""}`}
+              />
+              {fetchingModels ? "Fetching..." : "Fetch Models"}
+            </button>
+            {fetchError && (
+              <span className="text-xs text-red-400">{fetchError}</span>
+            )}
+          </div>
+
+          {models.length > 0 && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-foreground">
+                Available Models
+              </label>
+              <select
+                value={ai.ai_model || ""}
+                onChange={(e) => onChange("ai_model", e.target.value)}
+                className="w-full rounded-lg border border-border bg-bg-tertiary px-4 py-2.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              >
+                <option value="">Select a model...</option>
+                {models.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {models.length === 0 && !fetchingModels && (
+            <div className="rounded-lg border border-border bg-bg-tertiary p-4">
+              <p className="text-sm text-text-muted">
+                No models loaded. Click "Fetch Models" after starting Ollama with some
+                models (e.g., <code>ollama pull llama3.2</code>).
+              </p>
+            </div>
+          )}
+
+          <Input
+            label="Or enter model name manually"
+            value={ai.ai_model || ""}
+            onChange={(v) => onChange("ai_model", v)}
+            placeholder="llama3.2"
+            hint="The model name shown in Ollama"
+          />
+        </>
+      ) : (
+        <>
+          <Input
+            label="API Key"
+            value={ai.ai_api_key || ""}
+            onChange={(v) => onChange("ai_api_key", v)}
+            placeholder={
+              provider === "claude"
+                ? "sk-ant-..."
+                : provider === "openai"
+                  ? "sk-..."
+                  : provider === "groq"
+                    ? "gsk_..."
+                  : "AIza..."
+            }
+            type="password"
+            hint={`Your ${provider === "claude" ? "Anthropic" : provider === "openai" ? "OpenAI" : provider === "groq" ? "Groq" : "Google"} API key`}
+          />
+
+          <Input
+            label="Model"
+            value={
+              ai.ai_model ||
+              (provider === "claude"
+                ? "claude-sonnet-4-5-20250929"
+                : provider === "openai"
+                  ? "gpt-4o"
+                  : provider === "groq"
+                    ? "llama-3.3-70b-versatile"
+                  : "gemini-2.0-flash")
+            }
+            onChange={(v) => onChange("ai_model", v)}
+            placeholder="Model name"
+            hint="The model to use for generation"
+          />
+        </>
+      )}
+
+      <div className="flex items-center gap-3 pt-2">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={ai.ai_enabled !== "false"}
+            onChange={(e) => onChange("ai_enabled", e.target.checked ? "true" : "false")}
+            className="h-4 w-4 rounded accent-[var(--accent)]"
+          />
+          <span className="text-sm font-medium text-foreground">
+            Enable AI features
+          </span>
+        </label>
       </div>
     </div>
   );

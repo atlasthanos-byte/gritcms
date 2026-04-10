@@ -241,4 +241,9 @@ For high traffic:
 
 **CORS errors**: Ensure `CORS_ORIGINS` includes your web and admin domains (the docker-compose.prod.yml handles this automatically via `WEB_URL` and `ADMIN_URL`).
 
+**422 VALIDATION_ERROR with `unexpected EOF` on POST/PUT**:
+- Usually means request body was consumed by middleware before JSON binding.
+- Verify WAF bypass body-buffer prefixes match real route paths (for example `/api/pages`, `/api/posts`, `/api/email/...`).
+- After route changes, update middleware prefix lists and redeploy API.
+
 **SSL not working**: Ensure DNS A records point to your VPS IP and ports 80/443 are open.

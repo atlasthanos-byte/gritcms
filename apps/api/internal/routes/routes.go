@@ -54,9 +54,9 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 	// Max memory for multipart form parsing (excess goes to temp files)
 	r.MaxMultipartMemory = 50 << 20
 
-	// Buffer request bodies for routes that handle HTML content BEFORE WAF inspects them.
-	// The WAF ExcludeRoutes uses exact-match, so wildcards don't work for /campaigns/:id etc.
-	htmlContentPrefixes := []string{"/api/email/campaigns", "/api/email/templates", "/api/website/pages", "/api/website/posts"}
+	// Buffer request bodies for routes that handle HTML/JSON content BEFORE WAF inspects them.
+	// NOTE: keep prefixes aligned with real route paths; stale prefixes can cause consumed body -> EOF.
+	htmlContentPrefixes := []string{"/api/email/campaigns", "/api/email/templates", "/api/pages", "/api/posts"}
 	r.Use(middleware.WAFBypassBuffer(htmlContentPrefixes))
 
 	// Mount Sentinel security suite (WAF, rate limiting, auth shield, anomaly detection)
@@ -181,6 +181,7 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 	}
 	aiHandler := &handlers.AIHandler{
 		AI: svc.AI,
+		DB: db,
 	}
 	jobsHandler := &handlers.JobsHandler{
 		RedisURL: cfg.RedisURL,
@@ -332,6 +333,9 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 		protected.DELETE("/uploads/:id", uploadHandler.Delete)
 
 		// AI
+		protected.GET("/ai/config", aiHandler.GetConfig)
+		protected.PUT("/ai/config", aiHandler.UpdateConfig)
+		protected.GET("/ai/models", aiHandler.ListModels)
 		protected.POST("/ai/complete", aiHandler.Complete)
 		protected.POST("/ai/chat", aiHandler.Chat)
 		protected.POST("/ai/stream", aiHandler.Stream)
@@ -774,15 +778,15 @@ func Setup(db *gorm.DB, cfg *config.Config, svc *Services) *gin.Engine {
 			modelCount = len(models.Models())
 
 			c.JSON(http.StatusOK, gin.H{"data": gin.H{
-				"version":          "1.0.0",
-				"go_version":       runtime.Version(),
-				"environment":      cfg.AppEnv,
-				"database":         dbVersion,
-				"database_tables":  tableCount,
+				"version":           "1.0.0",
+				"go_version":        runtime.Version(),
+				"environment":       cfg.AppEnv,
+				"database":          dbVersion,
+				"database_tables":   tableCount,
 				"registered_models": modelCount,
-				"enabled_services": enabledServices,
-				"os":               runtime.GOOS + "/" + runtime.GOARCH,
-				"goroutines":       runtime.NumGoroutine(),
+				"enabled_services":  enabledServices,
+				"os":                runtime.GOOS + "/" + runtime.GOARCH,
+				"goroutines":        runtime.NumGoroutine(),
 			}})
 		})
 
