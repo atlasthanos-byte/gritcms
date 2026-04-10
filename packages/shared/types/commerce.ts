@@ -156,6 +156,8 @@ export interface CheckoutRequest {
   course_id?: number;
   price_id?: number;
   coupon_code?: string;
+  processor?: string;
+  page_slug?: string;
 }
 
 export interface CheckoutResponse {
@@ -164,6 +166,7 @@ export interface CheckoutResponse {
   order_number: string;
   amount: number;
   currency: string;
+  processor?: string;
   publishable_key: string;
 }
 

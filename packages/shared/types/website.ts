@@ -168,6 +168,7 @@ export interface Page {
   excerpt: string;
   status: "draft" | "published" | "archived";
   template: string;
+  payment_provider: string;
   meta_title: string;
   meta_description: string;
   og_image: string;

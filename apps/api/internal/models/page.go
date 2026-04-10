@@ -24,6 +24,7 @@ type Page struct {
 	Excerpt         string         `gorm:"size:500" json:"excerpt"`
 	Status          string         `gorm:"size:20;default:'draft';index" json:"status"`
 	Template        string         `gorm:"size:100;default:'default'" json:"template"`
+	PaymentProvider string         `gorm:"size:50;default:'stripe'" json:"payment_provider"`
 	MetaTitle       string         `gorm:"size:255" json:"meta_title"`
 	MetaDescription string         `gorm:"size:500" json:"meta_description"`
 	OGImage         string         `gorm:"size:500" json:"og_image"`

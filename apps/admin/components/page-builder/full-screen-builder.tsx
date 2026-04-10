@@ -124,6 +124,7 @@ interface FullScreenBuilderProps {
   excerpt: string;
   status: "draft" | "published" | "archived";
   template: string;
+  paymentProvider: string;
   metaTitle: string;
   metaDescription: string;
   ogImage: string;
@@ -132,6 +133,7 @@ interface FullScreenBuilderProps {
   onExcerptChange: (v: string) => void;
   onStatusChange: (v: "draft" | "published" | "archived") => void;
   onTemplateChange: (v: string) => void;
+  onPaymentProviderChange: (v: string) => void;
   onMetaTitleChange: (v: string) => void;
   onMetaDescriptionChange: (v: string) => void;
   onOGImageChange: (v: string) => void;
@@ -150,6 +152,7 @@ export function FullScreenBuilder({
   excerpt,
   status,
   template,
+  paymentProvider,
   metaTitle,
   metaDescription,
   ogImage,
@@ -158,6 +161,7 @@ export function FullScreenBuilder({
   onExcerptChange,
   onStatusChange,
   onTemplateChange,
+  onPaymentProviderChange,
   onMetaTitleChange,
   onMetaDescriptionChange,
   onOGImageChange,
@@ -556,6 +560,7 @@ export function FullScreenBuilder({
         excerpt={excerpt}
         status={status}
         template={template}
+        paymentProvider={paymentProvider}
         metaTitle={metaTitle}
         metaDescription={metaDescription}
         ogImage={ogImage}
@@ -564,6 +569,7 @@ export function FullScreenBuilder({
         onExcerptChange={onExcerptChange}
         onStatusChange={onStatusChange}
         onTemplateChange={onTemplateChange}
+        onPaymentProviderChange={onPaymentProviderChange}
         onMetaTitleChange={onMetaTitleChange}
         onMetaDescriptionChange={onMetaDescriptionChange}
         onOGImageChange={onOGImageChange}

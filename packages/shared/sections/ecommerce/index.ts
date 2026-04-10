@@ -23,6 +23,16 @@ const ecommercePropsSchema = [
   },
 ];
 
+const paymentModulePropsSchema = [
+  { key: "heading", label: "Heading", type: "text" as const },
+  { key: "subheading", label: "Sub-heading", type: "text" as const },
+  { key: "checkoutType", label: "Checkout Type", type: "select" as const, options: [{ label: "Product", value: "product" }, { label: "Course", value: "course" }] },
+  { key: "productId", label: "Product ID", type: "number" as const },
+  { key: "courseId", label: "Course ID", type: "number" as const },
+  { key: "priceId", label: "Price ID (optional)", type: "number" as const },
+  { key: "buttonText", label: "Button Text", type: "text" as const },
+];
+
 const defaultProducts = [
   { name: "Classic Leather Jacket", price: "$249.00", image: "", description: "Premium full-grain leather with a timeless silhouette." },
   { name: "Wireless Noise-Cancelling Headphones", price: "$179.00", image: "", description: "Immersive sound with 30-hour battery life." },
@@ -897,6 +907,41 @@ const Ecommerce015: React.FC<Record<string, unknown>> = (props) => {
   );
 };
 
+const EcommercePayment: React.FC<Record<string, unknown>> = (props) => {
+  const heading = (props.heading as string) || "Checkout";
+  const subheading = (props.subheading as string) || "Complete your payment securely.";
+  const buttonText = (props.buttonText as string) || "Pay with Stripe";
+  const onCheckout = props.onCheckout as (() => void) | undefined;
+  const isProcessing = Boolean(props.isProcessing);
+  const error = (props.checkoutError as string) || "";
+
+  return React.createElement(
+    "section",
+    { className: "relative overflow-hidden py-20 bg-slate-50" },
+    React.createElement(
+      "div",
+      { className: "mx-auto max-w-3xl px-6 lg:px-8" },
+      React.createElement(
+        "div",
+        { className: "rounded-2xl border border-slate-200 bg-white p-8 shadow-sm" },
+        React.createElement("h2", { className: "text-3xl font-bold text-slate-900 mb-3" }, heading),
+        React.createElement("p", { className: "text-slate-600 mb-6" }, subheading),
+        error && React.createElement("p", { className: "text-sm text-red-600 mb-4" }, error),
+        React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: onCheckout,
+            disabled: !onCheckout || isProcessing,
+            className: "w-full rounded-xl bg-violet-600 px-6 py-3 text-white font-semibold hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors",
+          },
+          isProcessing ? "Processing..." : buttonText
+        )
+      )
+    )
+  );
+};
+
 // ─── Section definitions ─────────────────────────────────────────────────────
 
 const ecommerceSections: SectionDefinition[] = [
@@ -1068,6 +1113,24 @@ const ecommerceSections: SectionDefinition[] = [
     defaultProps: { heading: "Customer Reviews", subheading: "See what our customers are saying.", items: [] },
     propsSchema: ecommercePropsSchema,
     component: Ecommerce015,
+  },
+  {
+    id: "ecommerce-payment-001",
+    category: "ecommerce",
+    name: "Payment Module",
+    description: "Initiates secure checkout for product or course purchases.",
+    tags: ["ecommerce", "checkout", "payment", "stripe"],
+    defaultProps: {
+      heading: "Secure Checkout",
+      subheading: "Pay with card using Stripe.",
+      checkoutType: "product",
+      productId: 0,
+      courseId: 0,
+      priceId: 0,
+      buttonText: "Pay now",
+    },
+    propsSchema: paymentModulePropsSchema,
+    component: EcommercePayment,
   },
 ];
 

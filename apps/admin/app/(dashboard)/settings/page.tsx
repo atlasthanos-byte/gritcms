@@ -18,6 +18,7 @@ import {
   Unplug,
   Server,
   Monitor,
+  CreditCard,
   Zap,
   Loader2,
 } from "@/lib/icons";
@@ -81,6 +82,7 @@ const tabs = [
   { id: "social", label: "Social", icon: Share2 },
   { id: "seo", label: "SEO", icon: Search },
   { id: "ai", label: "AI", icon: Zap },
+  { id: "payments", label: "Payments", icon: CreditCard },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "system", label: "System", icon: Server },
 ];
@@ -126,6 +128,7 @@ export default function SettingsPage() {
   const { data: themeData, isLoading: themeLoading } = useSettings("theme");
   const { data: seoData, isLoading: seoLoading } = useSettings("seo");
   const { data: aiData, isLoading: aiLoading } = useSettings("ai");
+  const { data: payData, isLoading: payLoading } = useSettings("payments");
   const { data: intData, isLoading: intLoading } = useSettings("integrations");
   const { mutate: save, isPending: saving } = useUpdateSettings();
 
@@ -133,6 +136,7 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<Record<string, string>>({});
   const [seo, setSeo] = useState<Record<string, string>>({});
   const [ai, setAI] = useState<Record<string, string>>({});
+  const [payments, setPayments] = useState<Record<string, string>>({});
   const [integrations, setIntegrations] = useState<Record<string, string>>({});
 
   // Seed local state once fetched
@@ -186,6 +190,9 @@ export default function SettingsPage() {
   useEffect(() => {
     if (intData) setIntegrations(intData);
   }, [intData]);
+  useEffect(() => {
+    if (payData) setPayments(payData);
+  }, [payData]);
 
   const updateTheme = (key: string, value: string) =>
     setTheme((prev) => ({ ...prev, [key]: value }));
@@ -195,6 +202,8 @@ export default function SettingsPage() {
     setAI((prev) => ({ ...prev, [key]: value }));
   const updateInt = (key: string, value: string) =>
     setIntegrations((prev) => ({ ...prev, [key]: value }));
+  const updatePayments = (key: string, value: string) =>
+    setPayments((prev) => ({ ...prev, [key]: value }));
 
   const handleSave = async () => {
     if (activeTab === "seo") {
@@ -214,12 +223,14 @@ export default function SettingsPage() {
       }
     } else if (activeTab === "integrations") {
       save({ group: "integrations", settings: integrations });
+    } else if (activeTab === "payments") {
+      save({ group: "payments", settings: payments });
     } else {
       save({ group: "theme", settings: theme });
     }
   };
 
-  const isLoading = themeLoading || seoLoading || aiLoading || intLoading;
+  const isLoading = themeLoading || seoLoading || aiLoading || intLoading || payLoading;
 
   if (isLoading) {
     return (
@@ -289,6 +300,9 @@ export default function SettingsPage() {
         )}
         {activeTab === "seo" && <SeoTab seo={seo} onChange={updateSeo} />}
         {activeTab === "ai" && <AITab ai={ai} onChange={updateAI} />}
+        {activeTab === "payments" && (
+          <PaymentsTab payments={payments} onChange={updatePayments} />
+        )}
         {activeTab === "integrations" && (
           <IntegrationsTab integrations={integrations} onChange={updateInt} />
         )}
@@ -633,6 +647,62 @@ function SeoTab({
         placeholder="G-XXXXXXXXXX"
         hint="Your Google Analytics 4 measurement ID."
       />
+    </div>
+  );
+}
+
+/* ─── Integrations Tab ────────────────────────────────────────── */
+function PaymentsTab({
+  payments,
+  onChange,
+}: {
+  payments: Record<string, string>;
+  onChange: (k: string, v: string) => void;
+}) {
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-1">Payments</h2>
+        <p className="text-sm text-text-secondary">
+          Configure the default processor and Stripe API credentials.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-foreground">
+          Default Processor
+        </label>
+        <select
+          value={payments.default_processor || "stripe"}
+          onChange={(e) => onChange("default_processor", e.target.value)}
+          className="w-full rounded-lg border border-border bg-bg-tertiary px-4 py-2.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        >
+          <option value="stripe">Stripe</option>
+        </select>
+      </div>
+
+      <Input
+        label="Stripe Publishable Key"
+        value={payments.stripe_publishable_key || ""}
+        onChange={(v) => onChange("stripe_publishable_key", v)}
+        placeholder="pk_test_..."
+      />
+      <Input
+        label="Stripe Secret Key"
+        value={payments.stripe_secret_key || ""}
+        onChange={(v) => onChange("stripe_secret_key", v)}
+        placeholder="sk_test_..."
+      />
+      <Input
+        label="Stripe Webhook Secret"
+        value={payments.stripe_webhook_secret || ""}
+        onChange={(v) => onChange("stripe_webhook_secret", v)}
+        placeholder="whsec_..."
+      />
+      <p className="rounded-lg border border-border bg-bg-tertiary px-4 py-3 text-xs text-text-muted">
+        Stripe test card: <span className="font-semibold">4242 4242 4242 4242</span>, any
+        future expiry and any CVC.
+      </p>
     </div>
   );
 }

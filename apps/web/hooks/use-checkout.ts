@@ -11,6 +11,8 @@ interface CheckoutInput {
   course_id?: number;
   price_id?: number;
   coupon_code?: string;
+  processor?: string;
+  page_slug?: string;
 }
 
 export function useCreateCheckout() {

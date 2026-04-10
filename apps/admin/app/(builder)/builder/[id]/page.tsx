@@ -22,6 +22,7 @@ export default function BuilderPage() {
   const [excerpt, setExcerpt] = useState("");
   const [status, setStatus] = useState<"draft" | "published" | "archived">("draft");
   const [template, setTemplate] = useState("default");
+  const [paymentProvider, setPaymentProvider] = useState("stripe");
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [ogImage, setOGImage] = useState("");
@@ -34,6 +35,7 @@ export default function BuilderPage() {
       setExcerpt(existingPage.excerpt || "");
       setStatus(existingPage.status);
       setTemplate(existingPage.template || "default");
+      setPaymentProvider(existingPage.payment_provider || "stripe");
       setMetaTitle(existingPage.meta_title || "");
       setMetaDescription(existingPage.meta_description || "");
       setOGImage(existingPage.og_image || "");
@@ -55,6 +57,7 @@ export default function BuilderPage() {
       excerpt,
       status,
       template,
+      payment_provider: paymentProvider,
       meta_title: metaTitle,
       meta_description: metaDescription,
       og_image: ogImage,
@@ -77,6 +80,7 @@ export default function BuilderPage() {
       excerpt,
       status: "published" as const,
       template,
+      payment_provider: paymentProvider,
       meta_title: metaTitle,
       meta_description: metaDescription,
       og_image: ogImage,
@@ -110,6 +114,7 @@ export default function BuilderPage() {
       excerpt={excerpt}
       status={status}
       template={template}
+      paymentProvider={paymentProvider}
       metaTitle={metaTitle}
       metaDescription={metaDescription}
       ogImage={ogImage}
@@ -118,6 +123,7 @@ export default function BuilderPage() {
       onExcerptChange={setExcerpt}
       onStatusChange={setStatus}
       onTemplateChange={setTemplate}
+      onPaymentProviderChange={setPaymentProvider}
       onMetaTitleChange={setMetaTitle}
       onMetaDescriptionChange={setMetaDescription}
       onOGImageChange={setOGImage}

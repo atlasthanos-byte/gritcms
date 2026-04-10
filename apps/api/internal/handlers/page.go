@@ -162,6 +162,7 @@ func (h *PageHandler) Create(c *gin.Context) {
 		Excerpt         string         `json:"excerpt"`
 		Status          string         `json:"status"`
 		Template        string         `json:"template"`
+		PaymentProvider string         `json:"payment_provider"`
 		MetaTitle       string         `json:"meta_title"`
 		MetaDescription string         `json:"meta_description"`
 		OGImage         string         `json:"og_image"`
@@ -188,6 +189,7 @@ func (h *PageHandler) Create(c *gin.Context) {
 		Excerpt:         req.Excerpt,
 		Status:          req.Status,
 		Template:        req.Template,
+		PaymentProvider: req.PaymentProvider,
 		MetaTitle:       req.MetaTitle,
 		MetaDescription: req.MetaDescription,
 		OGImage:         req.OGImage,
@@ -252,6 +254,7 @@ func (h *PageHandler) Update(c *gin.Context) {
 		Excerpt         *string        `json:"excerpt"`
 		Status          *string        `json:"status"`
 		Template        *string        `json:"template"`
+		PaymentProvider *string        `json:"payment_provider"`
 		MetaTitle       *string        `json:"meta_title"`
 		MetaDescription *string        `json:"meta_description"`
 		OGImage         *string        `json:"og_image"`
@@ -281,6 +284,9 @@ func (h *PageHandler) Update(c *gin.Context) {
 	}
 	if req.Template != nil {
 		updates["template"] = *req.Template
+	}
+	if req.PaymentProvider != nil {
+		updates["payment_provider"] = strings.ToLower(strings.TrimSpace(*req.PaymentProvider))
 	}
 	if req.MetaTitle != nil {
 		updates["meta_title"] = *req.MetaTitle

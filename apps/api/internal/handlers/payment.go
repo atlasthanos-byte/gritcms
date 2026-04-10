@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -25,6 +26,51 @@ type PaymentHandler struct {
 	cfg *config.Config
 }
 
+type paymentSettings struct {
+	DefaultProcessor    string
+	StripeSecretKey     string
+	StripePublishable   string
+	StripeWebhookSecret string
+}
+
+type paymentProcessor interface {
+	CreateIntent(amountInCents int64, currency string, description string, email string, metadata map[string]string) (paymentIntentResult, error)
+	GetIntent(intentID string) (string, error)
+}
+
+type paymentIntentResult struct {
+	ID           string
+	ClientSecret string
+}
+
+type stripeProcessor struct{}
+
+func (p *stripeProcessor) CreateIntent(amountInCents int64, currency string, description string, email string, metadata map[string]string) (paymentIntentResult, error) {
+	params := &stripe.PaymentIntentParams{
+		Amount:   stripe.Int64(amountInCents),
+		Currency: stripe.String(strings.ToLower(currency)),
+		AutomaticPaymentMethods: &stripe.PaymentIntentAutomaticPaymentMethodsParams{
+			Enabled: stripe.Bool(true),
+		},
+		Description:  stripe.String(description),
+		ReceiptEmail: stripe.String(email),
+		Metadata:     metadata,
+	}
+	pi, err := paymentintent.New(params)
+	if err != nil {
+		return paymentIntentResult{}, err
+	}
+	return paymentIntentResult{ID: pi.ID, ClientSecret: pi.ClientSecret}, nil
+}
+
+func (p *stripeProcessor) GetIntent(intentID string) (string, error) {
+	pi, err := paymentintent.Get(intentID, nil)
+	if err != nil {
+		return "", err
+	}
+	return string(pi.Status), nil
+}
+
 // NewPaymentHandler creates a new PaymentHandler.
 func NewPaymentHandler(db *gorm.DB, cfg *config.Config) *PaymentHandler {
 	// Set Stripe secret key globally
@@ -32,6 +78,63 @@ func NewPaymentHandler(db *gorm.DB, cfg *config.Config) *PaymentHandler {
 		stripe.Key = cfg.StripeSecretKey
 	}
 	return &PaymentHandler{db: db, cfg: cfg}
+}
+
+func (h *PaymentHandler) resolveSettings() paymentSettings {
+	result := paymentSettings{
+		DefaultProcessor:    "stripe",
+		StripeSecretKey:     h.cfg.StripeSecretKey,
+		StripePublishable:   h.cfg.StripePublishableKey,
+		StripeWebhookSecret: h.cfg.StripeWebhookSecret,
+	}
+
+	var settings []models.Setting
+	if err := h.db.Where("\"group\" = ?", "payments").Find(&settings).Error; err != nil {
+		return result
+	}
+	for _, s := range settings {
+		switch s.Key {
+		case "default_processor":
+			if s.Value != "" {
+				result.DefaultProcessor = strings.ToLower(s.Value)
+			}
+		case "stripe_secret_key":
+			if s.Value != "" {
+				result.StripeSecretKey = s.Value
+			}
+		case "stripe_publishable_key":
+			if s.Value != "" {
+				result.StripePublishable = s.Value
+			}
+		case "stripe_webhook_secret":
+			if s.Value != "" {
+				result.StripeWebhookSecret = s.Value
+			}
+		}
+	}
+	return result
+}
+
+func (h *PaymentHandler) resolveProcessor(requested string, pageProcessor string) (string, paymentSettings, error) {
+	settings := h.resolveSettings()
+	processor := strings.ToLower(strings.TrimSpace(requested))
+	if processor == "" {
+		processor = strings.ToLower(strings.TrimSpace(pageProcessor))
+	}
+	if processor == "" {
+		processor = settings.DefaultProcessor
+	}
+	if processor == "" {
+		processor = "stripe"
+	}
+	if processor != "stripe" {
+		return "", settings, fmt.Errorf("unsupported payment processor: %s", processor)
+	}
+	if settings.StripeSecretKey == "" || settings.StripePublishable == "" {
+		return "", settings, fmt.Errorf("stripe is not configured")
+	}
+	stripe.Key = settings.StripeSecretKey
+	return processor, settings, nil
 }
 
 // Checkout creates a pending order and a Stripe PaymentIntent, returning
@@ -43,6 +146,8 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 		CourseID   *uint  `json:"course_id"`
 		PriceID    uint   `json:"price_id"`
 		CouponCode string `json:"coupon_code"`
+		Processor  string `json:"processor"`
+		PageSlug   string `json:"page_slug"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -73,6 +178,7 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 	var subtotal float64
 	var currency string
 	var itemName string
+	var pageProcessor string
 	var orderItem models.OrderItem
 
 	switch input.Type {
@@ -155,6 +261,19 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 		return
 	}
 
+	if input.PageSlug != "" {
+		var page models.Page
+		if err := h.db.Where("slug = ?", input.PageSlug).First(&page).Error; err == nil {
+			pageProcessor = page.PaymentProvider
+		}
+	}
+
+	processor, settings, err := h.resolveProcessor(input.Processor, pageProcessor)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if currency == "" {
 		currency = "USD"
 	}
@@ -209,7 +328,7 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 		TaxAmount:       0,
 		Total:           totalAmount,
 		Currency:        currency,
-		PaymentProvider: "stripe",
+		PaymentProvider: processor,
 		CouponID:        couponID,
 		Items:           []models.OrderItem{orderItem},
 	}
@@ -224,23 +343,13 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 		h.db.Model(&models.Coupon{}).Where("id = ?", *couponID).UpdateColumn("used_count", gorm.Expr("used_count + 1"))
 	}
 
-	// Create Stripe PaymentIntent
-	params := &stripe.PaymentIntentParams{
-		Amount:   stripe.Int64(amountInCents),
-		Currency: stripe.String(strings.ToLower(currency)),
-		AutomaticPaymentMethods: &stripe.PaymentIntentAutomaticPaymentMethodsParams{
-			Enabled: stripe.Bool(true),
-		},
-		Description:  stripe.String(itemName),
-		ReceiptEmail: stripe.String(u.Email),
-		Metadata: map[string]string{
-			"order_id":   fmt.Sprintf("%d", order.ID),
-			"contact_id": fmt.Sprintf("%d", contact.ID),
-			"type":       input.Type,
-		},
-	}
-
-	pi, err := paymentintent.New(params)
+	var proc paymentProcessor = &stripeProcessor{}
+	pi, err := proc.CreateIntent(amountInCents, currency, itemName, u.Email, map[string]string{
+		"order_id":   fmt.Sprintf("%d", order.ID),
+		"contact_id": fmt.Sprintf("%d", contact.ID),
+		"type":       input.Type,
+		"processor":  processor,
+	})
 	if err != nil {
 		log.Printf("[payment] Stripe PaymentIntent creation failed: %v", err)
 		// Clean up the order
@@ -254,12 +363,13 @@ func (h *PaymentHandler) Checkout(c *gin.Context) {
 	h.db.Model(&order).Update("payment_id", pi.ID)
 
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{
-		"client_secret":  pi.ClientSecret,
-		"order_id":       order.ID,
-		"order_number":   order.OrderNumber,
-		"amount":         amountInCents,
-		"currency":       currency,
-		"publishable_key": h.cfg.StripePublishableKey,
+		"client_secret":   pi.ClientSecret,
+		"order_id":        order.ID,
+		"order_number":    order.OrderNumber,
+		"amount":          amountInCents,
+		"currency":        currency,
+		"processor":       processor,
+		"publishable_key": settings.StripePublishable,
 	}})
 }
 
@@ -328,15 +438,22 @@ func (h *PaymentHandler) ConfirmCheckout(c *gin.Context) {
 		return
 	}
 
-	pi, err := paymentintent.Get(order.PaymentID, nil)
+	_, settings, err := h.resolveProcessor(order.PaymentProvider, "")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	stripe.Key = settings.StripeSecretKey
+	var proc paymentProcessor = &stripeProcessor{}
+	status, err := proc.GetIntent(order.PaymentID)
 	if err != nil {
 		log.Printf("[confirm] Failed to retrieve PI %s: %v", order.PaymentID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify payment"})
 		return
 	}
 
-	if pi.Status != stripe.PaymentIntentStatusSucceeded {
-		c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": string(pi.Status)}})
+	if status != string(stripe.PaymentIntentStatusSucceeded) {
+		c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": status}})
 		return
 	}
 
@@ -354,12 +471,14 @@ func (h *PaymentHandler) ConfirmCheckout(c *gin.Context) {
 
 // StripeConfig returns the publishable key for the frontend.
 func (h *PaymentHandler) StripeConfig(c *gin.Context) {
-	if h.cfg.StripePublishableKey == "" {
+	settings := h.resolveSettings()
+	if settings.StripePublishable == "" {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Payments not configured"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{
-		"publishable_key": h.cfg.StripePublishableKey,
+		"publishable_key":   settings.StripePublishable,
+		"default_processor": settings.DefaultProcessor,
 	}})
 }
 
@@ -372,7 +491,11 @@ func (h *PaymentHandler) StripeWebhook(c *gin.Context) {
 	}
 
 	sig := c.GetHeader("Stripe-Signature")
-	event, err := webhook.ConstructEvent(payload, sig, h.cfg.StripeWebhookSecret)
+	settings := h.resolveSettings()
+	if settings.StripeSecretKey != "" {
+		stripe.Key = settings.StripeSecretKey
+	}
+	event, err := webhook.ConstructEvent(payload, sig, settings.StripeWebhookSecret)
 	if err != nil {
 		log.Printf("[webhook] Signature verification failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid signature"})
@@ -490,4 +613,85 @@ func fulfillOrder(db *gorm.DB, order *models.Order) {
 		"contact_id": order.ContactID,
 		"total":      order.Total,
 	})
+	syncOrderToAtlas(db, order)
+}
+
+func syncOrderToAtlas(db *gorm.DB, order *models.Order) {
+	var existing models.AtlasRevenueEntry
+	if err := db.Where("source_type = ? AND source_id = ?", "order", order.ID).First(&existing).Error; err == nil {
+		return
+	}
+
+	var contact models.Contact
+	if err := db.First(&contact, order.ContactID).Error; err != nil {
+		return
+	}
+
+	var atlasContact models.AtlasContact
+	if err := db.Where("email = ? AND tenant_id = ?", contact.Email, 1).First(&atlasContact).Error; err != nil {
+		name := strings.TrimSpace(contact.FirstName + " " + contact.LastName)
+		if name == "" {
+			name = contact.Email
+		}
+		atlasContact = models.AtlasContact{
+			TenantID:  1,
+			Name:      name,
+			Email:     contact.Email,
+			Phone:     contact.Phone,
+			Source:    models.AtlasSourceWebsite,
+			Type:      models.AtlasContactTypeClient,
+			Status:    models.AtlasContactStatusWon,
+			Currency:  strings.ToUpper(order.Currency),
+			DealValue: order.Total,
+		}
+		if err := db.Create(&atlasContact).Error; err != nil {
+			return
+		}
+	}
+
+	stream := models.AtlasStreamDGateway
+	description := "Order purchase"
+	for _, item := range order.Items {
+		if item.CourseID != nil {
+			stream = models.AtlasStreamCourse
+			description = "Course purchase"
+			break
+		}
+	}
+
+	sourceID := order.ID
+	entry := models.AtlasRevenueEntry{
+		TenantID:      1,
+		Stream:        stream,
+		SourceID:      &sourceID,
+		SourceType:    "order",
+		Amount:        order.Total,
+		Currency:      strings.ToUpper(order.Currency),
+		Description:   fmt.Sprintf("%s %s", description, order.OrderNumber),
+		PaymentMethod: models.AtlasPaymentStripe,
+		PaymentDate:   order.PaidAt,
+		InvoiceNumber: order.OrderNumber,
+		ContactID:     &atlasContact.ID,
+	}
+	if err := db.Create(&entry).Error; err != nil {
+		return
+	}
+
+	metadata, _ := json.Marshal(map[string]interface{}{
+		"order_id":     order.ID,
+		"order_number": order.OrderNumber,
+		"payment_id":   order.PaymentID,
+	})
+	interaction := models.AtlasInteraction{
+		TenantID:  1,
+		ContactID: atlasContact.ID,
+		Type:      models.AtlasInteractionNote,
+		Channel:   models.AtlasChannelInPerson,
+		Subject:   "Payment completed",
+		Body:      fmt.Sprintf("Customer completed payment for order %s (%s %.2f).", order.OrderNumber, strings.ToUpper(order.Currency), order.Total),
+		Direction: models.AtlasDirectionInbound,
+		Status:    "completed",
+		Metadata:  metadata,
+	}
+	_ = db.Create(&interaction).Error
 }

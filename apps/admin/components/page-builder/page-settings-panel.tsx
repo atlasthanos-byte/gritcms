@@ -11,6 +11,7 @@ interface PageSettingsPanelProps {
   excerpt: string;
   status: "draft" | "published" | "archived";
   template: string;
+  paymentProvider: string;
   metaTitle: string;
   metaDescription: string;
   ogImage: string;
@@ -19,6 +20,7 @@ interface PageSettingsPanelProps {
   onExcerptChange: (v: string) => void;
   onStatusChange: (v: "draft" | "published" | "archived") => void;
   onTemplateChange: (v: string) => void;
+  onPaymentProviderChange: (v: string) => void;
   onMetaTitleChange: (v: string) => void;
   onMetaDescriptionChange: (v: string) => void;
   onOGImageChange: (v: string) => void;
@@ -32,6 +34,7 @@ export function PageSettingsPanel({
   excerpt,
   status,
   template,
+  paymentProvider,
   metaTitle,
   metaDescription,
   ogImage,
@@ -40,6 +43,7 @@ export function PageSettingsPanel({
   onExcerptChange,
   onStatusChange,
   onTemplateChange,
+  onPaymentProviderChange,
   onMetaTitleChange,
   onMetaDescriptionChange,
   onOGImageChange,
@@ -124,6 +128,17 @@ export function PageSettingsPanel({
               <option value="full-width">Full Width</option>
               <option value="landing">Landing Page</option>
               <option value="sidebar">With Sidebar</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Payment Processor</label>
+            <select
+              value={paymentProvider || "stripe"}
+              onChange={(e) => onPaymentProviderChange(e.target.value)}
+              className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            >
+              <option value="stripe">Stripe</option>
             </select>
           </div>
 

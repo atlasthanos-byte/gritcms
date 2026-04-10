@@ -28,7 +28,11 @@ export default function HomePage() {
     return (
       <>
         <PageJsonLd page={page} />
-        <LivePageRenderer sections={page.content as unknown as PageSection[]} />
+        <LivePageRenderer
+          sections={page.content as unknown as PageSection[]}
+          pageSlug={page.slug}
+          paymentProvider={page.payment_provider}
+        />
       </>
     );
   }

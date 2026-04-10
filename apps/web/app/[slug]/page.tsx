@@ -61,7 +61,11 @@ export default function DynamicPage() {
     return (
       <>
         <PageJsonLd page={page} />
-        <LivePageRenderer sections={page.content as unknown as PageSection[]} />
+        <LivePageRenderer
+          sections={page.content as unknown as PageSection[]}
+          pageSlug={page.slug}
+          paymentProvider={page.payment_provider}
+        />
       </>
     );
   }
