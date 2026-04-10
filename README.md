@@ -52,7 +52,7 @@ Built with **Go** (Gin + GORM) backend and **Next.js** (App Router) frontend in 
 ### Step 1: Clone & Install Dependencies
 
 ```bash
-git clone https://github.com/atlasthanos-byte/gritcmscms.git
+git clone https://github.com/atlasthanos-byte/gritcms.git
 cd gritcms
 pnpm install
 ```
@@ -563,9 +563,43 @@ See [.env.example](.env.example) for all available options. Key variables:
 | `RESEND_API_KEY` | Resend API key for email |
 | `AI_PROVIDER` | `claude`, `openai`, or `gemini` |
 | `AI_API_KEY` | API key for AI provider |
+| `STRIPE_SECRET_KEY` | Stripe secret key (`sk_test_...` / `sk_live_...`) |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_test_...` / `pk_live_...`) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_...`) |
 | `CORS_ORIGINS` | Comma-separated allowed origins |
 | `SENTINEL_ENABLED` | Enable WAF & rate limiting (disable in local dev) |
 | `PULSE_ENABLED` | Enable performance monitoring |
+
+## Payments (Stripe)
+
+Stripe-first payments are integrated for product/course checkout and builder-rendered payment sections.
+
+### Configure in Admin
+
+Go to `Settings -> Payments` and set:
+
+- Default processor (`stripe`)
+- Stripe publishable key
+- Stripe secret key
+- Stripe webhook secret
+
+These values are persisted in the `payments` settings group (DB-backed), with env values as fallback.
+
+### Local Stripe test flow
+
+1. Add Stripe test keys in `Settings -> Payments`.
+2. Start webhook forwarding:
+
+```bash
+stripe listen --forward-to http://localhost:8080/api/webhooks/stripe
+```
+
+3. Use test card:
+   - `4242 4242 4242 4242`
+   - any future expiry
+   - any CVC
+
+Detailed payment runbook: [`docs/PAYMENTS.md`](docs/PAYMENTS.md).
 
 ## API Endpoints
 
